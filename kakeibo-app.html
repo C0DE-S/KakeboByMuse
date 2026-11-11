@@ -258,8 +258,16 @@
       .fld-row .fld { flex: 1; }
       .set-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 2px; border-bottom: 1px solid var(--line); }
       .set-item:last-child { border-bottom: 0; }
-      .set-item .si-name { font-size: 14px; font-weight: 700; }
-      .set-item .si-sub { font-size: 11.5px; color: var(--ink-2); margin-top: 1px; }
+      .set-item .si-main { flex: 1; min-width: 0; }
+      .set-item .si-name { font-size: 14px; font-weight: 700; overflow-wrap: anywhere; }
+      .set-item .si-sub { font-size: 11.5px; color: var(--ink-2); margin-top: 1px; overflow-wrap: anywhere; }
+      .icon-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+      .icon-btn { width: 40px; height: 40px; border: 0; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; padding: 0; }
+      .icon-btn svg { width: 19px; height: 19px; flex-shrink: 0; }
+      .icon-btn.edit { background: var(--accent-soft); color: var(--accent); }
+      .icon-btn.del { background: var(--danger-soft); color: var(--danger); }
+      .fld input, .fld select, .fld textarea { scroll-margin-top: 76px; scroll-margin-bottom: 140px; }
+      #backupText { scroll-margin-bottom: 200px; }
       details.fold { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 4px 14px 12px; margin-bottom: 10px; box-shadow: var(--shadow); }
       details.fold summary { font-size: 14.5px; font-weight: 800; padding: 11px 0 4px; cursor: pointer; list-style: none; }
       details.fold summary::-webkit-details-marker { display: none; }
@@ -1019,6 +1027,7 @@
 
       /* ================= history screen ================= */
       var TRASH_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
+      var EDIT_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
       function histActionsHtml(kind, id) {
         return '<div class="hist-actions">' +
           '<button type="button" class="hist-act edit" data-act="edit" data-kind="' + kind + '" data-id="' + id + '">修正</button>' +
@@ -1282,6 +1291,68 @@
         if (!includeLast) h += '<option value="31"' + (sel === 31 ? " selected" : "") + ">31日</option>";
         return h;
       }
+      /* ---------- 設定：支払い方法の編集・削除 ---------- */
+      function openEditMethod(id) {
+        var m = methodById(id); if (!m) return;
+        openSheet('<h3>支払い方法を編集</h3>' +
+          '<div class="fld"><label for="emtName">名前</label><input type="text" id="emtName" placeholder="例：○○カード" /></div>' +
+          '<div class="fld"><label for="emtKind">種類</label><select id="emtKind">' +
+          '<option value="cash">現金/iD・口座</option><option value="card">クレジットカード</option><option value="emoney">電子マネー</option></select></div>' +
+          '<div class="fld"><label for="emtNote">補足ラベル（任意）</label><input type="text" id="emtNote" placeholder="例：クレジットモード" /></div>' +
+          '<div class="fld-row" id="emtCardRow" style="display:none">' +
+          '<div class="fld"><label for="emtClose">締め日</label><select id="emtClose"></select></div>' +
+          '<div class="fld"><label for="emtPay">支払日（翌月）</label><select id="emtPay"></select></div></div>' +
+          '<div class="row-btns"><button type="button" class="cancel" id="emtCancel">キャンセル</button><button type="button" class="ok" id="emtOk">保存する</button></div>');
+        var kindSel = document.getElementById("emtKind");
+        document.getElementById("emtName").value = m.name || "";
+        kindSel.value = m.kind || "cash";
+        document.getElementById("emtNote").value = m.note || "";
+        document.getElementById("emtClose").innerHTML = dayOptions(m.closeDay != null ? m.closeDay : 31, true);
+        document.getElementById("emtPay").innerHTML = dayOptions(m.payDay != null ? m.payDay : 1, false);
+        var cardRow = document.getElementById("emtCardRow");
+        function syncCardRow() { cardRow.style.display = kindSel.value === "card" ? "" : "none"; }
+        syncCardRow();
+        kindSel.addEventListener("change", syncCardRow);
+        document.getElementById("emtCancel").addEventListener("click", closeSheet);
+        document.getElementById("emtOk").addEventListener("click", function () {
+          var name = document.getElementById("emtName").value.trim();
+          if (!name) { toast("名前を入れてね"); return; }
+          var oldName = m.name;
+          m.name = name;
+          m.kind = kindSel.value;
+          var note = document.getElementById("emtNote").value.trim();
+          if (note) m.note = note; else delete m.note;
+          if (m.kind === "card") {
+            m.closeDay = +document.getElementById("emtClose").value;
+            m.payDay = +document.getElementById("emtPay").value;
+          } else { delete m.closeDay; delete m.payDay; }
+          if (name !== oldName) {
+            state.records.forEach(function (r) {
+              if (r.methodId === m.id) r.methodName = name;
+              if (r.toId === m.id) r.toName = name;
+            });
+          }
+          save(); closeSheet(); fillSettings(); renderMethods(); renderDests(); validate(); renderAll();
+          toast("支払い方法を保存した");
+        });
+      }
+      function openDeleteMethod(id) {
+        var m = methodById(id); if (!m) return;
+        if (state.methods.length <= 1) { toast("最後の1つは削除できません"); return; }
+        openSheet('<h3>この支払い方法を削除しますか？</h3>' +
+          '<div class="del-detail">' +
+          '<div class="kv-row"><span class="k">名前</span><span class="v">' + esc(m.name) + '</span></div>' +
+          '<div class="kv-row"><span class="k">種類</span><span class="v">' + esc(methodSubLabel(m)) + (m.kind === "card" ? " ／ " + ruleText(m) : "") + '</span></div></div>' +
+          '<div class="row-btns"><button type="button" class="danger-ok" id="dmtYes">はい</button><button type="button" class="cancel" id="dmtNo">いいえ</button></div>');
+        document.getElementById("dmtNo").addEventListener("click", closeSheet);
+        document.getElementById("dmtYes").addEventListener("click", function () {
+          state.methods = state.methods.filter(function (x) { return x.id !== id; });
+          if (selMethod === id) selMethod = state.methods.length ? state.methods[0].id : null;
+          if (selDest === id) selDest = null;
+          save(); closeSheet(); fillSettings(); renderMethods(); renderDests(); validate();
+          toast("支払い方法を削除した");
+        });
+      }
       function fillSettings() {
         document.getElementById("baseSavings").value = state.baseSavings || "";
         var ph = '<option value=""' + (!state.paydayDay ? " selected" : "") + ">未設定（月の初めで区切る）</option>";
@@ -1308,20 +1379,19 @@
         document.getElementById("fxDay").innerHTML = dayOptions(1, false);
         var ml = document.getElementById("methodList"), mh = "";
         state.methods.forEach(function (m) {
-          mh += '<div class="set-item"><div><div class="si-name">' + esc(m.name) + '</div>' +
-            '<div class="si-sub">' + methodSubLabel(m) + (m.kind === "card" ? " ／ " + ruleText(m) : "") + '</div></div>' +
-            '<button type="button" class="mini-btn" data-delmt="' + m.id + '">削除</button></div>';
+          mh += '<div class="set-item"><div class="si-main"><div class="si-name">' + esc(m.name) + '</div>' +
+            '<div class="si-sub">' + esc(methodSubLabel(m)) + (m.kind === "card" ? " ／ " + ruleText(m) : "") + '</div></div>' +
+            '<span class="icon-actions">' +
+            '<button type="button" class="icon-btn edit" data-editmt="' + m.id + '" aria-label="' + esc(m.name) + 'を編集">' + EDIT_SVG + '</button>' +
+            '<button type="button" class="icon-btn del" data-delmt="' + m.id + '" aria-label="' + esc(m.name) + 'を削除">' + TRASH_SVG + '</button>' +
+            '</span></div>';
         });
         ml.innerHTML = mh;
+        ml.querySelectorAll("[data-editmt]").forEach(function (b) {
+          b.addEventListener("click", function () { openEditMethod(b.getAttribute("data-editmt")); });
+        });
         ml.querySelectorAll("[data-delmt]").forEach(function (b) {
-          b.addEventListener("click", function () {
-            var id = b.getAttribute("data-delmt");
-            if (state.methods.length <= 1) { toast("最後の1つは削除できません"); return; }
-            state.methods = state.methods.filter(function (m) { return m.id !== id; });
-            if (selMethod === id) selMethod = state.methods[0].id;
-            save(); fillSettings(); renderMethods(); renderDests(); validate();
-            toast("支払い方法を削除した");
-          });
+          b.addEventListener("click", function () { openDeleteMethod(b.getAttribute("data-delmt")); });
         });
         document.getElementById("mtClose").innerHTML = dayOptions(31, true);
         document.getElementById("mtPay").innerHTML = dayOptions(1, false);
@@ -1362,6 +1432,8 @@
       function backupJson() { return JSON.stringify(state); }
       function applyImport(obj) {
         state = obj;
+        var bt = document.getElementById("backupText");
+        if (bt) bt.value = "";
         if (!Array.isArray(state.fixedCosts)) state.fixedCosts = [];
         if (!Array.isArray(state.salaries)) state.salaries = [];
         if (typeof state.baseSavings !== "number") state.baseSavings = +state.baseSavings || 0;
@@ -1372,6 +1444,30 @@
         selDest = null; amountStr = "";
         setType("expense");
         fillSettings(); renderMethods(); renderDests(); renderAmount(); validate(); renderAll();
+      }
+      /* キーボード表示に合わせて、入力中の欄が見える位置まで設定画面をスクロールする。
+         キーボードはフォーカス直後ではなく少し遅れて出てくるので、タイミングをずらして複数回合わせる */
+      function scrollFieldIntoView(el) {
+        if (!el) return;
+        [60, 320, 620].forEach(function (delay) {
+          setTimeout(function () {
+            try { el.scrollIntoView({ behavior: "smooth", block: "center" }); } catch (e) { el.scrollIntoView(); }
+          }, delay);
+        });
+      }
+      var backupTextEl = document.getElementById("backupText");
+      backupTextEl.addEventListener("focus", function () { scrollFieldIntoView(backupTextEl); });
+      document.getElementById("view-settings").addEventListener("focusin", function (e) {
+        var t = e.target;
+        if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT")) scrollFieldIntoView(t);
+      });
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener("resize", function () {
+          var a = document.activeElement;
+          if (a && a.id === "backupText") {
+            setTimeout(function () { try { a.scrollIntoView({ behavior: "smooth", block: "center" }); } catch (e) {} }, 60);
+          }
+        });
       }
       document.getElementById("shareBtn").addEventListener("click", function () {
         var text = backupJson();
@@ -1394,6 +1490,7 @@
         var ta = document.getElementById("backupText");
         ta.value = backupJson();
         ta.select();
+        scrollFieldIntoView(ta);
         if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(ta.value).then(function () { toast("コピーした"); }, function () { document.execCommand("copy"); toast("コピーした"); });
         else { document.execCommand("copy"); toast("コピーした"); }
       });
