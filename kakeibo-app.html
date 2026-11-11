@@ -1,0 +1,1503 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>Kakeibo App</title>
+    <style>
+      :root {
+        --bg: #f4f5f1;
+        --surface: #ffffff;
+        --surface-2: #eceee8;
+        --ink: #1d201c;
+        --ink-2: #6a6f66;
+        --line: #dde0d8;
+        --accent: #0d7a48;
+        --accent-soft: #e2f2e9;
+        --accent-ink: #ffffff;
+        --charge: #a86e0a;
+        --charge-soft: #f7ecd4;
+        --danger: #c23b2e;
+        --danger-soft: #fbe9e6;
+        --shadow: 0 1px 3px rgba(30, 40, 30, .08);
+        /* ボタンの下限高さ。記録ボタンの高さを従来（16pxフォント×1.45＋上下padding24px＝約47.2px）の
+           90%＝42.5pxに変更し、その高さをボタン類の下限（min-height）の基準値とする */
+        --btn-min: 42.5px;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #101210;
+          --surface: #1b1e1b;
+          --surface-2: #262a26;
+          --ink: #eceee9;
+          --ink-2: #9aa295;
+          --line: #333833;
+          --accent: #35b878;
+          --accent-soft: #173528;
+          --accent-ink: #0c1510;
+          --charge: #e0aa4e;
+          --charge-soft: #3a2f16;
+          --danger: #e0685c;
+          --danger-soft: #3d201c;
+          --shadow: 0 1px 3px rgba(0, 0, 0, .4);
+        }
+      }
+      * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+      html, body { height: 100%; overscroll-behavior: none; overscroll-behavior-y: none; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: "Hiragino Kaku Gothic ProN", "Noto Sans JP", -apple-system, sans-serif;
+        font-size: 15px;
+        line-height: 1.45;
+        overscroll-behavior: none;
+      }
+      button { font-family: inherit; cursor: pointer; }
+      button:active { filter: brightness(.9); transform: translateY(1px); }
+      .num { font-variant-numeric: tabular-nums; }
+
+      /* ---------- shell ---------- */
+      .app { display: flex; flex-direction: column; height: 100dvh; max-width: 560px; margin: 0 auto; }
+      .views { flex: 1; position: relative; min-height: 0; }
+      .view { position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: none; padding: 14px 14px 20px; display: none; }
+      .view.active { display: block; }
+      .view.input-view { overflow: hidden; display: none; --pad-t: 10px; padding: var(--pad-t) 12px 10px; }
+      .view.input-view.active { display: flex; flex-direction: column; }
+      /* 入力画面のレイアウト配分：境界（支出/チャージとテンキーの境目）の下限位置は画面の中心（50%）。
+         上半分ゾーンは最大で画面の50%までしか伸びず、上のボタンが伸びても境界は中心より下には行かない。
+         余った縦幅はテンキー側が受けてキーが縦に伸びる。画面が短くテンキーが下限高さに
+         達する場合は、境界は中心より上に来る。チャージ先が出ても境界は中心を超えず、
+         ゾーンの中で支払い方法ボタンが縮むだけ */
+      .top-zone { flex: 1 1 auto; min-height: 0; max-height: 50%; display: flex; flex-direction: column; justify-content: space-between; min-width: 0; }
+      .methods-zone { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+
+      /* ---------- tab bar ---------- */
+      .tabbar {
+        display: flex; background: var(--surface); border-bottom: 1px solid var(--line);
+        padding-top: env(safe-area-inset-top); flex-shrink: 0;
+      }
+      .tabbar button {
+        flex: 1; background: none; border: 0; padding: 8px 0 7px; color: var(--ink-2);
+        display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 10px; font-weight: 500;
+      }
+      .tabbar button svg { width: 23px; height: 23px; }
+      .tabbar button.on { color: var(--accent); font-weight: 700; }
+
+      /* ---------- input screen ---------- */
+      .sec-label { font-size: 11.5px; font-weight: 700; color: var(--ink-2); margin: 0 2px 5px; flex-shrink: 0; }
+      /* 支払い方法ボタンはゾーンの余りを受けて縦に伸びてよい。下限は --btn-min */
+      .methods { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: minmax(var(--btn-min), 1fr); gap: 6px; flex: 1 1 auto; min-height: 0; width: 100%; min-width: 0; }
+      .method-btn {
+        background: var(--surface); border: 1.5px solid var(--line); border-radius: 11px;
+        padding: 4px; text-align: center; color: var(--ink); box-shadow: var(--shadow);
+        min-height: var(--btn-min); min-width: 0; max-width: 100%; overflow: hidden;
+        display: flex; align-items: center; justify-content: center;
+      }
+      /* 名前（1行目）と補足ラベル（2行目）を1つの塊として、ボタンの上下・左右中央に置く */
+      .method-btn .mtxt { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; min-width: 0; text-align: center; }
+      /* 名前の行ボックスは通常サイズ（12px×1.25=15px）に固定する。
+         フォントが自動縮小されたボタンでも行の高さが変わらず、下の補足ラベルの縦位置が全ボタンで揃う */
+      .method-btn .mname { display: block; width: 100%; min-width: 0; font-size: 12px; font-weight: 700; line-height: 15px; height: 15px; white-space: nowrap; overflow: hidden; }
+      .method-btn .mname-in { display: inline-block; white-space: nowrap; }
+      .method-btn .mkind { display: block; width: 100%; min-width: 0; font-size: 9.5px; color: var(--ink-2); line-height: 1.3; white-space: nowrap; overflow: hidden; }
+      .method-btn.sel { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+      .method-btn.sel .mkind { color: var(--accent-ink); opacity: .75; }
+
+      .amount-wrap { margin: 6px 2px 4px; display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; flex-shrink: 0; }
+      .amount-display { font-size: 34px; font-weight: 900; letter-spacing: .5px; line-height: 1.1; text-align: right; flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; }
+      .amount-display .yen { font-size: 19px; font-weight: 700; color: var(--ink-2); margin-right: 2px; }
+      .amount-display.empty { color: var(--ink-2); opacity: .45; }
+      .clear-btn { background: var(--surface-2); border: 0; border-radius: 999px; color: var(--ink-2); font-size: 12px; font-weight: 700; padding: 6px 11px; flex-shrink: 0; margin-bottom: 5px; }
+
+      .seg { display: flex; background: var(--surface-2); border-radius: 11px; padding: 3px; gap: 3px; flex-shrink: 0; }
+      .seg button { flex: 1; border: 0; background: transparent; border-radius: 8px; padding: 7px 0; font-size: 14.5px; font-weight: 700; color: var(--ink-2); min-height: var(--btn-min); }
+      .seg button.sel-expense { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+      .seg button.sel-charge { background: var(--charge); color: #fff; }
+
+      .dest-row { display: none; flex-shrink: 0; }
+      .dest-row.open { display: block; }
+      .dest-row .sec-label { margin-top: 7px; }
+      .dests { display: flex; gap: 6px; flex-wrap: wrap; }
+      .dest-btn {
+        background: var(--surface); border: 1.5px solid var(--line); border-radius: 999px;
+        padding: 6px 15px; font-size: 13.5px; font-weight: 700; color: var(--ink);
+        min-height: var(--btn-min); display: inline-flex; align-items: center; justify-content: center;
+      }
+      .dest-btn.sel { background: var(--charge); border-color: var(--charge); color: #fff; }
+
+      /* テンキーは残りの縦幅を受けてキーが縦に伸びる。各キーの下限は --btn-min で、
+         テンキーの高さはこれ以上縮まない（その分、境界が画面の中心より上に来る） */
+      .keypad { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(4, 1fr); gap: 6px; margin-top: 8px; flex: 1 1 auto; min-height: calc(var(--btn-min) * 4 + 18px); }
+      .keypad button {
+        background: var(--surface); border: 1px solid var(--line); border-radius: 11px;
+        font-size: 21px; font-weight: 700; color: var(--ink); padding: 0; min-height: var(--btn-min); box-shadow: var(--shadow);
+        display: flex; align-items: center; justify-content: center;
+      }
+      .keypad button.fn { font-size: 16px; color: var(--ink-2); background: var(--surface-2); }
+      /* 記録ボタンの高さは下限高さ（--btn-min）そのもの＝従来の90% */
+      .record-btn {
+        margin-top: 8px; width: 100%; border: 0; border-radius: 13px; background: var(--accent); color: var(--accent-ink);
+        font-size: 16px; font-weight: 900; height: var(--btn-min); padding: 0; letter-spacing: .04em; flex-shrink: 0;
+        display: flex; align-items: center; justify-content: center;
+      }
+      /* Short viewports (iPhone in-app browser with host chrome): squeeze further so the record button always fits */
+      @media (max-height: 680px) {
+        /* 短い画面では下限高さも従来の圧縮寸法（記録ボタン約43.2px）の90%＝39pxに合わせる */
+        .view.input-view { --pad-t: 8px; padding-bottom: 8px; --btn-min: 39px; }
+        .amount-wrap { margin-top: 4px; margin-bottom: 2px; }
+        .amount-display { font-size: 29px; }
+        .seg button { padding: 6px 0; }
+        .keypad { gap: 5px; margin-top: 6px; }
+        .keypad button { font-size: 19px; }
+        .record-btn { margin-top: 6px; }
+      }
+      .record-btn:disabled { opacity: .35; }
+      .record-btn.done { background: var(--charge); }
+
+      /* ---------- generic cards / lists ---------- */
+      .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; box-shadow: var(--shadow); margin-bottom: 10px; }
+      .hero { text-align: left; }
+      .hero .h-label { font-size: 12.5px; font-weight: 700; color: var(--ink-2); }
+      .hero .h-amount { font-size: 38px; font-weight: 900; line-height: 1.15; margin: 2px 0; }
+      .hero .h-amount.neg { color: var(--danger); }
+      .hero .h-break { font-size: 12px; color: var(--ink-2); line-height: 1.6; }
+      .hero .h-cycle { font-size: 11.5px; color: var(--ink-2); margin-top: 6px; }
+      .kv-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 11px 2px; border-bottom: 1px solid var(--line); }
+      .kv-row:last-child { border-bottom: 0; }
+      .kv-row .k { font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 8px; min-width: 0; }
+      .kv-row .k .sub { font-size: 11px; color: var(--ink-2); font-weight: 400; }
+      .kv-row .v { font-size: 16px; font-weight: 800; white-space: nowrap; }
+      .kv-row .v.neg { color: var(--danger); }
+      .mini-btn { background: var(--surface-2); border: 0; border-radius: 999px; font-size: 11.5px; font-weight: 700; color: var(--ink-2); padding: 6px 11px; flex-shrink: 0; }
+      .primary-btn { display: block; width: 100%; border: 0; border-radius: 12px; background: var(--accent); color: var(--accent-ink); font-size: 15px; font-weight: 800; padding: 13px 0; margin-bottom: 10px; }
+      .ghost-btn { display: block; width: 100%; border: 1.5px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); font-size: 14px; font-weight: 700; padding: 12px 0; margin-bottom: 10px; }
+      .view-title { font-size: 17px; font-weight: 900; margin: 2px 2px 12px; }
+      .empty-note { color: var(--ink-2); font-size: 13px; text-align: center; padding: 26px 10px; line-height: 1.7; }
+
+      .badge { display: inline-block; font-size: 10.5px; font-weight: 700; border-radius: 999px; padding: 2px 8px; vertical-align: 1px; }
+      .badge.expense { background: var(--surface-2); color: var(--ink-2); }
+      .badge.charge { background: var(--charge-soft); color: var(--charge); }
+      .badge.salary { background: var(--accent-soft); color: var(--accent); }
+      .badge.adjust { background: var(--surface-2); color: var(--ink-2); }
+
+      .hist-item { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 11px 13px; margin-bottom: 7px; box-shadow: var(--shadow); }
+      .hist-main { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+      .hist-main .left { min-width: 0; }
+      .hist-main .what { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .hist-main .when { font-size: 11.5px; color: var(--ink-2); margin-top: 1px; }
+      .hist-main .amt { font-size: 16px; font-weight: 800; white-space: nowrap; }
+      .hist-note { font-size: 12px; color: var(--ink-2); margin-top: 3px; overflow-wrap: anywhere; }
+      .hist-note .note-label { font-weight: 700; }
+      .hist-actions { display: none; margin-top: 10px; gap: 6px; }
+      .hist-item.open .hist-actions { display: flex; }
+      .hist-act {
+        border: 0; border-radius: 9px; font-size: 13.5px; font-weight: 800; padding: 9px 4px;
+        display: flex; align-items: center; justify-content: center; gap: 4px; min-width: 0;
+      }
+      .hist-act.edit { flex: 2; background: var(--accent-soft); color: var(--accent); }
+      .hist-act.note { flex: 2; background: var(--surface-2); color: var(--ink); }
+      .hist-act.del { flex: 1; background: var(--danger-soft); color: var(--danger); }
+      .hist-act.del svg { width: 18px; height: 18px; flex-shrink: 0; }
+      .del-detail { background: var(--surface-2); border-radius: 11px; padding: 6px 13px; margin-bottom: 14px; }
+      .del-detail .kv-row { padding: 8px 0; }
+      .del-detail .kv-row .k { font-size: 12.5px; color: var(--ink-2); font-weight: 700; }
+      .del-detail .kv-row .v { font-size: 14.5px; white-space: normal; text-align: right; overflow-wrap: anywhere; }
+      .sheet .row-btns button.danger-ok { background: var(--danger); color: #fff; }
+      .edit-keypad { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(4, 1fr); gap: 6px; margin-top: 8px; height: 176px; }
+      .edit-keypad button {
+        background: var(--surface); border: 1px solid var(--line); border-radius: 11px;
+        font-size: 19px; font-weight: 700; color: var(--ink); padding: 0; box-shadow: var(--shadow);
+        display: flex; align-items: center; justify-content: center;
+      }
+      .edit-keypad button.fn { font-size: 15px; color: var(--ink-2); background: var(--surface-2); }
+      .edit-save-row { display: flex; gap: 9px; margin-top: 10px; }
+      .edit-save-row button { flex: 1; border-radius: 11px; font-size: 15px; font-weight: 800; padding: 12px 0; border: 0; }
+      .edit-save-row .cancel { background: var(--surface-2); color: var(--ink); }
+      .edit-save-row .ok { background: var(--accent); color: var(--accent-ink); }
+      .edit-save-row .ok:disabled { opacity: .35; }
+      .date-head { font-size: 12px; font-weight: 700; color: var(--ink-2); margin: 14px 2px 7px; }
+      .date-head:first-child { margin-top: 0; }
+
+      .bill-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+      .bill-head .card-name { font-size: 15.5px; font-weight: 800; }
+      .bill-head .rule { font-size: 11px; color: var(--ink-2); }
+      .bill-group { border-top: 1px solid var(--line); margin-top: 10px; padding-top: 10px; }
+      .bill-group:first-of-type { border-top: 0; margin-top: 6px; padding-top: 4px; }
+      .bill-when { display: flex; justify-content: space-between; align-items: baseline; }
+      .bill-when .d { font-size: 14px; font-weight: 800; }
+      .bill-when .t { font-size: 17px; font-weight: 900; }
+      .bill-items { margin-top: 6px; }
+      .bill-items .bi { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--ink-2); padding: 2.5px 0; gap: 10px; }
+      .bill-items .bi .a { color: var(--ink); font-weight: 600; white-space: nowrap; }
+
+      /* ---------- balance chart ---------- */
+      .chart-svg { display: block; width: 100%; height: auto; }
+      .chart-svg .grid { stroke: var(--line); stroke-width: 1; }
+      .chart-svg .zero { stroke: var(--ink-2); stroke-width: 1.2; }
+      .chart-svg .ylab { font-size: 9.5px; fill: var(--ink-2); text-anchor: end; }
+      .chart-svg .bval { font-size: 10.5px; font-weight: 800; fill: var(--ink); text-anchor: middle; font-variant-numeric: tabular-nums; }
+      .chart-svg .bval.neg { fill: var(--danger); }
+      .chart-svg .xlab { font-size: 10px; fill: var(--ink-2); text-anchor: middle; }
+      .chart-svg .xlab.proj { fill: var(--charge); font-weight: 700; }
+      .flow-head { font-size: 14.5px; font-weight: 800; margin-bottom: 2px; }
+      .flow-total { border-top: 1px solid var(--line); margin-top: 3px; padding-top: 10px; padding-bottom: 2px; border-bottom: 0; }
+      .kv-row .v.credit { color: var(--danger); }
+
+      /* ---------- forms (settings / modal) ---------- */
+      .fld { margin-bottom: 11px; }
+      .fld label { display: block; font-size: 12px; font-weight: 700; color: var(--ink-2); margin-bottom: 5px; }
+      .fld input, .fld select, .fld textarea {
+        width: 100%; border: 1.5px solid var(--line); border-radius: 10px; background: var(--surface);
+        color: var(--ink); font-size: 16px; padding: 10px 11px; font-family: inherit;
+      }
+      .fld textarea { font-size: 12px; min-height: 84px; }
+      .fld-row { display: flex; gap: 9px; }
+      .fld-row .fld { flex: 1; }
+      .set-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 2px; border-bottom: 1px solid var(--line); }
+      .set-item:last-child { border-bottom: 0; }
+      .set-item .si-name { font-size: 14px; font-weight: 700; }
+      .set-item .si-sub { font-size: 11.5px; color: var(--ink-2); margin-top: 1px; }
+      details.fold { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 4px 14px 12px; margin-bottom: 10px; box-shadow: var(--shadow); }
+      details.fold summary { font-size: 14.5px; font-weight: 800; padding: 11px 0 4px; cursor: pointer; list-style: none; }
+      details.fold summary::-webkit-details-marker { display: none; }
+      details.fold summary::before { content: "▸ "; color: var(--ink-2); }
+      details.fold[open ] summary::before { content: "▾ "; }
+      .danger-btn { width: 100%; border: 0; border-radius: 10px; background: var(--danger-soft); color: var(--danger); font-size: 14px; font-weight: 800; padding: 11px 0; margin-top: 4px; }
+
+      /* ---------- modal / toast ---------- */
+      .overlay { position: fixed; inset: 0; background: rgba(10, 12, 10, .45); display: none; align-items: flex-end; justify-content: center; z-index: 50; }
+      .overlay.open { display: flex; }
+      .sheet { background: var(--surface); width: 100%; max-width: 560px; border-radius: 18px 18px 0 0; padding: 18px 16px calc(16px + env(safe-area-inset-bottom)); max-height: 88dvh; overflow-y: auto; overscroll-behavior: none; }
+      .overlay.open .sheet { animation: sheet-up .3s cubic-bezier(.32, .9, .35, 1); }
+      @keyframes sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+      .sheet h3 { margin: 0 0 14px; font-size: 16px; font-weight: 900; }
+      .sheet .row-btns { display: flex; gap: 9px; margin-top: 4px; }
+      .sheet .row-btns button { flex: 1; border-radius: 11px; font-size: 15px; font-weight: 800; padding: 12px 0; border: 0; }
+      .sheet .cancel { background: var(--surface-2); color: var(--ink); }
+      .sheet .ok { background: var(--accent); color: var(--accent-ink); }
+      .toast {
+        position: fixed; left: 50%; transform: translateX(-50%) translateY(20px); bottom: calc(20px + env(safe-area-inset-bottom));
+        background: var(--ink); color: var(--bg); font-size: 13.5px; font-weight: 700; border-radius: 999px;
+        padding: 10px 18px; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 60;
+        display: flex; gap: 14px; align-items: center; max-width: 92vw; white-space: nowrap;
+      }
+      .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
+      .toast button { background: none; border: 0; color: var(--charge); font-weight: 900; font-size: 13.5px; padding: 0; }
+      @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <!-- ======== tab bar ======== -->
+      <nav class="tabbar">
+        <button type="button" data-view="input" class="on">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          入力
+        </button>
+        <button type="button" data-view="money">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
+          お金
+        </button>
+        <button type="button" data-view="balance">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15v3"/><path d="M12 9v9"/><path d="M17 5v13"/></svg>
+          収支
+        </button>
+        <button type="button" data-view="history">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
+          履歴
+        </button>
+        <button type="button" data-view="settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34h0a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55h0a1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87v0a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1Z"/></svg>
+          設定
+        </button>
+      </nav>
+
+      <div class="views">
+
+        <!-- ======== 入力 ======== -->
+        <section class="view input-view active" id="view-input">
+          <div class="top-zone">
+            <div class="methods-zone">
+              <div class="sec-label">支払い方法</div>
+              <div class="methods" id="methods"></div>
+            </div>
+
+            <div class="amount-wrap">
+              <div class="amount-display empty num" id="amountDisplay"><span class="yen">¥</span>0</div>
+              <button class="clear-btn" id="clearBtn" type="button">クリア</button>
+            </div>
+
+            <div>
+              <div class="seg" role="tablist">
+                <button type="button" id="segExpense" class="sel-expense">支出</button>
+                <button type="button" id="segCharge">チャージ</button>
+              </div>
+
+              <div class="dest-row" id="destRow">
+                <div class="sec-label">チャージ先</div>
+                <div class="dests" id="dests"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="keypad" id="keypad">
+            <button type="button" data-k="1">1</button><button type="button" data-k="2">2</button><button type="button" data-k="3">3</button>
+            <button type="button" data-k="4">4</button><button type="button" data-k="5">5</button><button type="button" data-k="6">6</button>
+            <button type="button" data-k="7">7</button><button type="button" data-k="8">8</button><button type="button" data-k="9">9</button>
+            <button type="button" data-k="00" class="fn">00</button><button type="button" data-k="0">0</button><button type="button" data-k="bs" class="fn">⌫</button>
+          </div>
+
+          <button class="record-btn" id="recordBtn" type="button" disabled>記録する</button>
+        </section>
+
+        <!-- ======== お金 ======== -->
+        <section class="view" id="view-money">
+          <div id="moneyBody"></div>
+          <button class="primary-btn" id="salaryBtn" type="button">給料を登録する</button>
+        </section>
+
+        <!-- ======== 収支 ======== -->
+        <section class="view" id="view-balance">
+          <div class="view-title">収支（給料サイクルごと）</div>
+          <div id="balanceBody"></div>
+        </section>
+
+        <!-- ======== 履歴 ======== -->
+        <section class="view" id="view-history">
+          <div class="view-title">履歴</div>
+          <div id="historyBody"></div>
+        </section>
+
+        <!-- ======== 設定 ======== -->
+        <section class="view" id="view-settings">
+          <div class="view-title">設定</div>
+
+          <div class="card">
+            <div class="fld" style="margin-bottom:9px">
+              <label for="baseSavings">毎月の貯金額（基本）</label>
+              <input type="number" id="baseSavings" inputmode="numeric" min="0" placeholder="0" />
+            </div>
+            <div class="fld" style="margin-bottom:9px">
+              <label for="paydaySel">給料日</label>
+              <select id="paydaySel"></select>
+            </div>
+            <button class="ghost-btn" id="saveBaseSavings" type="button" style="margin-bottom:0">保存する</button>
+          </div>
+
+          <details class="fold" id="fixedFold">
+            <summary>固定費</summary>
+            <div id="fixedList"></div>
+            <div style="border-top:1px solid var(--line); margin-top:8px; padding-top:12px">
+              <div class="fld"><label for="fxName">名前</label><input type="text" id="fxName" placeholder="例：家賃、スマホ代" /></div>
+              <div class="fld-row">
+                <div class="fld"><label for="fxMethod">支払い方法</label><select id="fxMethod"></select></div>
+                <div class="fld"><label for="fxDay">請求日</label><select id="fxDay"></select></div>
+              </div>
+              <div class="fld"><label for="fxAmount">金額</label><input type="number" id="fxAmount" inputmode="numeric" min="0" placeholder="0" /></div>
+              <button class="primary-btn" id="addFixed" type="button" style="margin-bottom:2px">固定費を追加</button>
+            </div>
+          </details>
+
+          <details class="fold" id="methodFold">
+            <summary>支払い方法</summary>
+            <div id="methodList"></div>
+            <div style="border-top:1px solid var(--line); margin-top:8px; padding-top:12px">
+              <div class="fld-row">
+                <div class="fld"><label for="mtName">名前</label><input type="text" id="mtName" placeholder="例：○○カード" /></div>
+                <div class="fld"><label for="mtKind">種類</label>
+                  <select id="mtKind">
+                    <option value="cash">現金/iD・口座</option>
+                    <option value="card">クレジットカード</option>
+                    <option value="emoney">電子マネー</option>
+                  </select>
+                </div>
+              </div>
+              <div class="fld-row" id="mtCardRow" style="display:none">
+                <div class="fld"><label for="mtClose">締め日</label><select id="mtClose"></select></div>
+                <div class="fld"><label for="mtPay">支払日（翌月）</label><select id="mtPay"></select></div>
+              </div>
+              <button class="primary-btn" id="addMethod" type="button" style="margin-bottom:2px">支払い方法を追加</button>
+            </div>
+          </details>
+
+          <details class="fold">
+            <summary>バックアップ</summary>
+            <div style="margin-top:10px">
+              <button class="primary-btn" id="shareBtn" type="button">共有して保存する</button>
+              <button class="ghost-btn" id="copyBtn" type="button">テキストをコピー</button>
+            </div>
+            <div class="fld"><label for="backupText">データ（JSON）</label><textarea id="backupText" placeholder="読み込むデータをここに貼り付け"></textarea></div>
+            <button class="ghost-btn" id="fileBtn" type="button">ファイルから読み込む</button>
+            <input type="file" id="importFile" accept=".json,application/json,text/plain" style="display:none" />
+            <button class="danger-btn" id="importBtn" type="button">貼り付けた内容で読み込む</button>
+          </details>
+        </section>
+      </div>
+    </div>
+
+    <!-- ======== modal ======== -->
+    <div class="overlay" id="overlay">
+      <div class="sheet" id="sheet"></div>
+    </div>
+    <div class="toast" id="toast"><span id="toastMsg"></span><button type="button" id="toastAction" style="display:none">取り消す</button></div>
+
+    <script>
+      "use strict";
+      /* ================= data ================= */
+      var LS_KEY = "kakeibo-v1";
+      function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+      function defaultState() {
+        // 初期状態は個人情報を含まない最小構成にする。カードの登録や給料日などの
+        // 個人設定は、設定画面から登録されて端末のローカル保存にだけ残る
+        return {
+          methods: [
+            { id: "cash", name: "現金", kind: "cash" }
+          ],
+          records: [],     // {id, ts, date, type:'expense'|'charge'|'adjust', methodId, methodName, amount, toId, toName}
+          fixedCosts: [],  // {id, name, methodId, amount, billDay}
+          salaries: [],    // {id, ts, date, amount, savings}
+          baseSavings: 0,
+          paydayDay: null  // 給料日（サイクルの区切り）。未設定なら月の初めで区切る
+        };
+      }
+      var state;
+      try {
+        var raw = localStorage.getItem(LS_KEY);
+        state = raw ? JSON.parse(raw) : defaultState();
+        if (!state.methods || !state.records) state = defaultState();
+      } catch (e) { state = defaultState(); }
+      function save() { try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {} }
+      // 給料日は以前はコード側に固定されていたため、保存済みの利用者データには項目が無い。
+      // 登録済みの給料の日から推定して、端末のローカル保存側にだけ持たせる（ページのコードには置かない）
+      function derivePaydayDay() {
+        var mx = 0;
+        (state.salaries || []).forEach(function (s) {
+          var d = parseInt(String(s.date || "").slice(8, 10), 10);
+          if (d > mx) mx = d;
+        });
+        return mx > 0 ? mx : null;
+      }
+      function migrateState() {
+        var changed = false;
+        if (!Array.isArray(state.fixedCosts)) { state.fixedCosts = []; changed = true; }
+        if (!Array.isArray(state.salaries)) { state.salaries = []; changed = true; }
+        if (typeof state.baseSavings !== "number") { state.baseSavings = +state.baseSavings || 0; changed = true; }
+        if (state.paydayDay === undefined) { state.paydayDay = derivePaydayDay(); changed = true; }
+        if (changed) save();
+      }
+      migrateState();
+      // 旧表記「現金」→「現金/iD」へ引き継ぎ（デビット/iDも現金と同じ即時払いとして扱うため、kind は cash のまま維持）
+      function migrateCashLabel() {
+        var changed = false;
+        if (state.methods) state.methods.forEach(function (m) {
+          if (m.name === "現金" && m.kind === "cash") { m.name = "現金/iD"; changed = true; }
+          else if (m.id === "cash" && m.name === "現金") { m.name = "現金/iD"; if (m.kind !== "cash") m.kind = "cash"; changed = true; }
+        });
+        if (state.records) state.records.forEach(function (r) {
+          if (r.methodName === "現金") { r.methodName = "現金/iD"; changed = true; }
+          if (r.toName === "現金") { r.toName = "現金/iD"; changed = true; }
+        });
+        if (changed) save();
+      }
+      migrateCashLabel();
+      function methodById(id) { for (var i = 0; i < state.methods.length; i++) if (state.methods[i].id === id) return state.methods[i]; return null; }
+      function kindLabel(k) { return k === "card" ? "カード" : k === "emoney" ? "電子マネー" : "現金/iD・口座"; }
+      // 補足ラベルは、支払い方法ごとに保存された note があればそれを、なければ種類の名前を表示する
+      function methodSubLabel(m) {
+        if (!m) return "";
+        if (m.note) return m.note;
+        return kindLabel(m.kind);
+      }
+
+      /* ================= date helpers ================= */
+      function pad(n) { return (n < 10 ? "0" : "") + n; }
+      function toStr(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+      function todayStr() { return toStr(new Date()); }
+      function parseDate(s) { var p = s.split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); }
+      function lastDay(y, m) { return new Date(y, m + 1, 0).getDate(); }
+      var WD = ["日", "月", "火", "水", "木", "金", "土"];
+      function fmtDate(s) { var d = parseDate(s); return (d.getMonth() + 1) + "月" + d.getDate() + "日（" + WD[d.getDay()] + "）"; }
+      function fmtYen(n) { return "¥" + Math.round(n).toLocaleString("ja-JP"); }
+      function paydayOf(y, m) { // 給料日（設定として端末内に保存した日・土日は前倒し）。未設定なら月の初め
+        var day = state.paydayDay;
+        if (!day) return new Date(y, m, 1);
+        var d = new Date(y, m, Math.min(day, lastDay(y, m))), dow = d.getDay();
+        if (dow === 6) d.setDate(d.getDate() - 1); else if (dow === 0) d.setDate(d.getDate() - 2);
+        return d;
+      }
+      function nextPaydayAfter(dateStr) {
+        var d = parseDate(dateStr);
+        var p = paydayOf(d.getFullYear(), d.getMonth());
+        if (toStr(p) <= dateStr) p = paydayOf(d.getFullYear(), d.getMonth() + 1);
+        return toStr(p);
+      }
+      // カードの引き落とし日を返す
+      function billingPayDate(dateStr, m) {
+        var d = parseDate(dateStr), y = d.getFullYear(), mo = d.getMonth();
+        var cd = m.closeDay >= 31 ? lastDay(y, mo) : Math.min(m.closeDay, lastDay(y, mo));
+        if (d.getDate() > cd) { mo++; if (mo > 11) { mo = 0; y++; } }
+        var py = y, pm = mo + 1; if (pm > 11) { pm = 0; py++; }
+        return toStr(new Date(py, pm, Math.min(m.payDay, lastDay(py, pm))));
+      }
+
+      /* ================= derived data ================= */
+      function emoneyBalance(methodId) {
+        var bal = 0;
+        state.records.forEach(function (r) {
+          if (r.type === "charge" && r.toId === methodId) bal += r.amount;
+          else if (r.type === "expense" && r.methodId === methodId) bal -= r.amount;
+          else if (r.type === "adjust" && r.methodId === methodId) bal += r.amount;
+        });
+        return bal;
+      }
+      // 財布（現金）の残高：現金払いの支出・現金からのチャージで減り、残高調整（adjust）で実残高に合わせる
+      function cashBalance(methodId) {
+        var bal = 0;
+        state.records.forEach(function (r) {
+          if (r.type === "adjust" && r.methodId === methodId) bal += r.amount;
+          else if (r.type === "expense" && r.methodId === methodId) bal -= r.amount;
+          else if (r.type === "charge" && r.methodId === methodId) bal -= r.amount;
+        });
+        return bal;
+      }
+      // 貯金の残高調整（methodId: "savings" の adjust レコード）の合計
+      function savingsAdjustTotal() {
+        var sum = 0;
+        state.records.forEach(function (r) { if (r.type === "adjust" && r.methodId === "savings") sum += r.amount; });
+        return sum;
+      }
+      function fixedTotal() { return state.fixedCosts.reduce(function (s, f) { return s + (+f.amount || 0); }, 0); }
+      function savingsTotal() { return state.salaries.reduce(function (s, x) { return s + (+x.savings || 0); }, 0) + savingsAdjustTotal(); }
+      function currentCycle() {
+        var t = todayStr(), past = state.salaries.filter(function (s) { return s.date <= t; })
+          .sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+        if (!past.length) return null;
+        var cur = past[past.length - 1];
+        var later = state.salaries.filter(function (s) { return s.date > cur.date; })
+          .sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+        var end = later.length ? later[0].date : nextPaydayAfter(cur.date);
+        var used = 0;
+        state.records.forEach(function (r) {
+          if (r.type === "expense" && r.date >= cur.date && r.date < end) used += r.amount;
+        });
+        return { salary: cur, start: cur.date, end: end, used: used, fixed: fixedTotal(),
+                 free: cur.amount - fixedTotal() - (+cur.savings || 0) - used };
+      }
+      function monthExpenseTotal() {
+        var t = todayStr().slice(0, 7), sum = 0;
+        state.records.forEach(function (r) { if (r.type === "expense" && r.date.slice(0, 7) === t) sum += r.amount; });
+        return sum;
+      }
+      // カード請求イベント（実績＋固定費の発生分）
+      function cardEvents() {
+        var evs = [];
+        state.records.forEach(function (r) {
+          var m = methodById(r.methodId);
+          if (!m || m.kind !== "card") return;
+          if (r.type === "expense") evs.push({ date: r.date, label: "支払い", amount: r.amount, methodId: m.id, payDate: billingPayDate(r.date, m) });
+          else if (r.type === "charge") evs.push({ date: r.date, label: "チャージ（→" + (r.toName || "") + "）", amount: r.amount, methodId: m.id, payDate: billingPayDate(r.date, m) });
+        });
+        var now = new Date(), start = new Date(now.getFullYear(), now.getMonth() - 2, 1), end = new Date(now.getFullYear(), now.getMonth() + 4, 0);
+        state.fixedCosts.forEach(function (f) {
+          var m = methodById(f.methodId);
+          if (!m || m.kind !== "card") return;
+          var y = start.getFullYear(), mo = start.getMonth();
+          while (new Date(y, mo, 1) <= end) {
+            var dstr = toStr(new Date(y, mo, Math.min(f.billDay, lastDay(y, mo))));
+            evs.push({ date: dstr, label: f.name || "固定費", amount: +f.amount || 0, methodId: m.id, payDate: billingPayDate(dstr, m), fixed: true });
+            mo++; if (mo > 11) { mo = 0; y++; }
+          }
+        });
+        return evs;
+      }
+      function billGroups(methodId) {
+        var t = todayStr(), map = {};
+        cardEvents().forEach(function (e) {
+          if (e.methodId !== methodId || e.payDate < t) return;
+          if (!map[e.payDate]) map[e.payDate] = { payDate: e.payDate, total: 0, items: [] };
+          map[e.payDate].total += e.amount; map[e.payDate].items.push(e);
+        });
+        return Object.keys(map).sort().map(function (k) { var g = map[k]; g.items.sort(function (a, b) { return a.date < b.date ? -1 : 1; }); return g; });
+      }
+
+      /* ================= toast ================= */
+      var toastTimer = null, undoFn = null;
+      function toast(msg, undo) {
+        var el = document.getElementById("toast");
+        document.getElementById("toastMsg").textContent = msg;
+        var btn = document.getElementById("toastAction");
+        undoFn = undo || null;
+        btn.style.display = undo ? "" : "none";
+        el.classList.add("show");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () { el.classList.remove("show"); }, 3600);
+      }
+      document.getElementById("toastAction").addEventListener("click", function () {
+        if (undoFn) undoFn();
+        document.getElementById("toast").classList.remove("show");
+        renderAll();
+      });
+
+      /* ================= modal ================= */
+      var overlay = document.getElementById("overlay"), sheet = document.getElementById("sheet");
+      function openSheet(html) { sheet.innerHTML = html; overlay.classList.add("open"); }
+      function closeSheet() { overlay.classList.remove("open"); sheet.innerHTML = ""; }
+      overlay.addEventListener("click", function (e) { if (e.target === overlay) closeSheet(); });
+
+      /* ================= プルリフレッシュ防止 ================= */
+      // overscroll-behavior だけでは効かないアプリ内ブラウザ向けに、
+      // スクロール最上部で下へ引っ張る操作を touchmove 側でも止める（通常のスクロールは妨げない）
+      (function () {
+        var startY = null;
+        document.addEventListener("touchstart", function (e) {
+          startY = e.touches.length === 1 ? e.touches[0].clientY : null;
+        }, { passive: true });
+        document.addEventListener("touchmove", function (e) {
+          if (startY === null || e.touches.length !== 1) return;
+          if (e.touches[0].clientY - startY <= 0) return; // 下方向への引っ張りだけが対象
+          var el = e.target && e.target.closest ? e.target.closest(".view, .sheet") : null;
+          if (!el || el.scrollTop <= 0) e.preventDefault();
+        }, { passive: false });
+        document.addEventListener("touchend", function () { startY = null; });
+        document.addEventListener("touchcancel", function () { startY = null; });
+      })();
+
+      /* ================= input screen ================= */
+      var selMethod = state.methods.length ? state.methods[0].id : null;
+      var selType = "expense", selDest = null, amountStr = "";
+      var methodsEl = document.getElementById("methods"), destsEl = document.getElementById("dests");
+      var amountEl = document.getElementById("amountDisplay"), recordBtn = document.getElementById("recordBtn");
+
+      /* 支払い方法の名前は1行固定。アニメーションはせず、ボタン幅に収まる範囲で
+         フォントサイズを自動調整する：短い名前は通常サイズ（CSSの12px）、
+         長い名前は1行に収まる最大サイズまで小さくする */
+      var MNAME_BASE = 12, MNAME_MIN = 7.5;
+      function fitMethodName(mnameEl) {
+        var inner = mnameEl.querySelector(".mname-in");
+        if (!inner) return;
+        if (inner.getAnimations) inner.getAnimations().forEach(function (a) { a.cancel(); });
+        inner.style.transform = "";
+        mnameEl.classList.remove("mq");
+        // 前回のマーキー用ループコピーを単一表示に戻す（元の名前は data-name に保持）
+        var name = inner.getAttribute("data-name");
+        if (name === null) { name = inner.textContent; inner.setAttribute("data-name", name); }
+        if (inner.textContent !== name) inner.textContent = name;
+        mnameEl.style.fontSize = "";
+        var avail = mnameEl.clientWidth, full = inner.offsetWidth;
+        if (!avail || !full || full <= avail) return; // 通常サイズで収まる
+        var size = Math.max(MNAME_MIN, Math.floor(MNAME_BASE * avail / full * 10) / 10);
+        mnameEl.style.fontSize = size + "px";
+      }
+      function fitMethodNames(root) {
+        if (!root || !root.querySelectorAll) return;
+        root.querySelectorAll(".method-btn .mname").forEach(function (el) { fitMethodName(el); });
+      }
+      function scheduleNameFit(root) {
+        requestAnimationFrame(function () { fitMethodNames(root); });
+      }
+      var fitResizeTimer = null;
+      window.addEventListener("resize", function () {
+        clearTimeout(fitResizeTimer);
+        fitResizeTimer = setTimeout(function () { fitMethodNames(document); }, 200);
+      });
+
+      function renderMethods() {
+        methodsEl.innerHTML = "";
+        state.methods.forEach(function (m) {
+          var b = document.createElement("button");
+          b.type = "button"; b.className = "method-btn" + (m.id === selMethod ? " sel" : "");
+          b.innerHTML = '<span class="mtxt"><span class="mname"><span class="mname-in"></span></span><span class="mkind"></span></span>';
+          b.querySelector(".mname-in").textContent = m.name;
+          b.querySelector(".mkind").textContent = methodSubLabel(m);
+          b.addEventListener("click", function () { selMethod = m.id; renderMethods(); renderDests(); validate(); });
+          methodsEl.appendChild(b);
+        });
+        if (!methodById(selMethod) && state.methods.length) selMethod = state.methods[0].id;
+        scheduleNameFit(methodsEl);
+      }
+      function renderDests() {
+        destsEl.innerHTML = "";
+        var list = state.methods.filter(function (m) { return m.kind === "emoney" && m.id !== selMethod; });
+        if (selDest && !list.some(function (m) { return m.id === selDest; })) selDest = null;
+        if (!selDest && list.length === 1) selDest = list[0].id;
+        list.forEach(function (m) {
+          var b = document.createElement("button");
+          b.type = "button"; b.className = "dest-btn" + (m.id === selDest ? " sel" : "");
+          b.textContent = m.name;
+          b.addEventListener("click", function () { selDest = m.id; renderDests(); validate(); });
+          destsEl.appendChild(b);
+        });
+        if (!list.length) destsEl.innerHTML = '<span style="font-size:12.5px;color:var(--ink-2)">チャージ先（電子マネー）が未登録です</span>';
+      }
+      function amountVal() { return amountStr ? parseInt(amountStr, 10) : 0; }
+      function renderAmount() {
+        var v = amountVal();
+        amountEl.innerHTML = '<span class="yen">¥</span>' + v.toLocaleString("ja-JP");
+        amountEl.classList.toggle("empty", v === 0);
+      }
+      function validate() {
+        var ok = amountVal() > 0 && !!methodById(selMethod);
+        if (ok && selType === "charge") ok = !!selDest && selDest !== selMethod;
+        recordBtn.disabled = !ok;
+      }
+      function setType(t) {
+        selType = t;
+        document.getElementById("segExpense").className = t === "expense" ? "sel-expense" : "";
+        document.getElementById("segCharge").className = t === "charge" ? "sel-charge" : "";
+        document.getElementById("destRow").classList.toggle("open", t === "charge");
+        if (t === "charge") renderDests();
+        validate();
+      }
+      document.getElementById("segExpense").addEventListener("click", function () { setType("expense"); });
+      document.getElementById("segCharge").addEventListener("click", function () { setType("charge"); });
+      document.getElementById("keypad").addEventListener("click", function (e) {
+        var b = e.target.closest("button"); if (!b) return;
+        var k = b.getAttribute("data-k");
+        if (k === "bs") amountStr = amountStr.slice(0, -1);
+        else if (k === "00") { if (amountStr) amountStr += "00"; }
+        else { if (amountStr.length >= 7) return; amountStr = (amountStr + k).replace(/^0+(?=\d)/, ""); }
+        if (amountStr.length > 7) amountStr = amountStr.slice(0, 7);
+        renderAmount(); validate();
+      });
+      document.getElementById("clearBtn").addEventListener("click", function () { amountStr = ""; renderAmount(); validate(); });
+      recordBtn.addEventListener("click", function () {
+        var m = methodById(selMethod); if (!m) return;
+        var rec = { id: uid(), ts: Date.now(), date: todayStr(), type: selType, methodId: m.id, methodName: m.name, amount: amountVal() };
+        if (selType === "charge") { var d = methodById(selDest); rec.toId = d.id; rec.toName = d.name; }
+        state.records.push(rec); save();
+        amountStr = ""; renderAmount(); validate();
+        recordBtn.textContent = "✓ 記録した"; recordBtn.classList.add("done");
+        setTimeout(function () { recordBtn.textContent = "記録する"; recordBtn.classList.remove("done"); }, 1100);
+        toast(selType === "charge" ? m.name + " → " + rec.toName + " " + fmtYen(rec.amount) : m.name + " " + fmtYen(rec.amount) + " を記録");
+      });
+
+      /* ================= money screen ================= */
+      function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+      function renderMoney() {
+        var body = document.getElementById("moneyBody"), html = "", cyc = currentCycle();
+        if (cyc) {
+          html += '<div class="card hero"><div class="h-label">あと自由に使える額</div>' +
+            '<div class="h-amount num' + (cyc.free < 0 ? " neg" : "") + '">' + fmtYen(cyc.free) + '</div>' +
+            '<div class="h-break num">給料 ' + fmtYen(cyc.salary.amount) + ' − 固定費 ' + fmtYen(cyc.fixed) + ' − 貯金 ' + fmtYen(+cyc.salary.savings || 0) + ' − 使用済み ' + fmtYen(cyc.used) + '</div>' +
+            '<div class="h-cycle">' + fmtDate(cyc.start) + ' の給料分 ／ 次回給料日目安 ' + fmtDate(cyc.end) + '</div></div>';
+        } else {
+          html += '<div class="card hero"><div class="h-label">あと自由に使える額</div>' +
+            '<div class="h-amount num">―</div>' +
+            '<div class="h-break">給料を登録すると、固定費・貯金・使用済みを差し引いた残りが表示されます。</div></div>';
+        }
+        html += '<div class="card">';
+        html += '<div class="kv-row"><span class="k">今月使った額</span><span class="v num">' + fmtYen(monthExpenseTotal()) + '</span></div>';
+        var savBal = savingsTotal();
+        html += '<div class="kv-row"><span class="k">貯金残高</span>' +
+          '<span style="display:flex;align-items:center;gap:8px"><span class="v num' + (savBal < 0 ? " neg" : "") + '">' + fmtYen(savBal) + '</span>' +
+          '<button type="button" class="mini-btn" data-adjust="savings">残高を合わせる</button></span></div>';
+        state.methods.filter(function (m) { return m.kind === "cash"; }).forEach(function (m) {
+          var cbal = cashBalance(m.id);
+          html += '<div class="kv-row"><span class="k">' + esc(m.name) + ' 残高</span>' +
+            '<span style="display:flex;align-items:center;gap:8px"><span class="v num' + (cbal < 0 ? " neg" : "") + '">' + fmtYen(cbal) + '</span>' +
+            '<button type="button" class="mini-btn" data-adjust="' + m.id + '">残高を合わせる</button></span></div>';
+        });
+        state.methods.filter(function (m) { return m.kind === "emoney"; }).forEach(function (m) {
+          var bal = emoneyBalance(m.id);
+          html += '<div class="kv-row"><span class="k">' + esc(m.name) + ' 残高</span>' +
+            '<span style="display:flex;align-items:center;gap:8px"><span class="v num' + (bal < 0 ? " neg" : "") + '">' + fmtYen(bal) + '</span>' +
+            '<button type="button" class="mini-btn" data-adjust="' + m.id + '">残高を合わせる</button></span></div>';
+        });
+        html += '</div>';
+        // カードごとの次回引き落とし
+        var cards = state.methods.filter(function (m) { return m.kind === "card"; });
+        var anyBill = false, billHtml = '<div class="card">';
+        cards.forEach(function (m) {
+          var g = billGroups(m.id);
+          if (!g.length || g[0].total === 0) return;
+          anyBill = true;
+          billHtml += '<div class="kv-row"><span class="k">' + esc(m.name) + ' <span class="sub">次回引き落とし ' + fmtDate(g[0].payDate) + '</span></span><span class="v num">' + fmtYen(g[0].total) + '</span></div>';
+        });
+        billHtml += '</div>';
+        if (anyBill) html += billHtml;
+        body.innerHTML = html;
+        body.querySelectorAll("[data-adjust]").forEach(function (b) {
+          b.addEventListener("click", function () { openAdjust(b.getAttribute("data-adjust")); });
+        });
+      }
+      // 残高調整の対象。貯金は methodId "savings" の adjust レコードで表す（支払い方法ではない）
+      function adjustTarget(key) {
+        if (key === "savings") return { recMethodId: "savings", name: "貯金", cur: savingsTotal() };
+        var m = methodById(key); if (!m) return null;
+        return { recMethodId: m.id, name: m.name, cur: m.kind === "cash" ? cashBalance(m.id) : emoneyBalance(m.id) };
+      }
+      function openAdjust(key) {
+        var t = adjustTarget(key); if (!t) return;
+        var cur = t.cur;
+        openSheet('<h3>' + esc(t.name) + ' の残高を合わせる</h3>' +
+          '<div class="fld"><label>現在の残高（アプリ上の計算）</label><input type="text" value="' + fmtYen(cur) + '" disabled /></div>' +
+          '<div class="fld"><label for="adjVal">実際の残高</label><input type="number" id="adjVal" inputmode="numeric" value="' + cur + '" /></div>' +
+          '<div class="row-btns"><button type="button" class="cancel" id="adjCancel">キャンセル</button><button type="button" class="ok" id="adjOk">合わせる</button></div>');
+        document.getElementById("adjCancel").addEventListener("click", closeSheet);
+        document.getElementById("adjOk").addEventListener("click", function () {
+          var v = parseInt(document.getElementById("adjVal").value, 10);
+          if (isNaN(v)) return;
+          var delta = v - cur;
+          if (delta !== 0) {
+            state.records.push({ id: uid(), ts: Date.now(), date: todayStr(), type: "adjust", methodId: t.recMethodId, methodName: t.name, amount: delta });
+            save();
+          }
+          closeSheet(); renderAll(); toast(t.name + " の残高を " + fmtYen(v) + " に合わせた");
+        });
+      }
+      document.getElementById("salaryBtn").addEventListener("click", function () {
+        openSheet('<h3>給料を登録</h3>' +
+          '<div class="fld"><label for="salDate">給料日</label><input type="date" id="salDate" value="' + todayStr() + '" /></div>' +
+          '<div class="fld"><label for="salAmount">金額</label><input type="number" id="salAmount" inputmode="numeric" min="0" placeholder="0" /></div>' +
+          '<div class="fld"><label for="salSavings">この月の貯金分</label><input type="number" id="salSavings" inputmode="numeric" min="0" value="' + (state.baseSavings || 0) + '" /></div>' +
+          '<div class="row-btns"><button type="button" class="cancel" id="salCancel">キャンセル</button><button type="button" class="ok" id="salOk">登録する</button></div>');
+        document.getElementById("salCancel").addEventListener("click", closeSheet);
+        document.getElementById("salOk").addEventListener("click", function () {
+          var d = document.getElementById("salDate").value || todayStr();
+          var a = parseInt(document.getElementById("salAmount").value, 10);
+          var s = parseInt(document.getElementById("salSavings").value, 10);
+          if (!a || a <= 0) { toast("給料の金額を入れてね"); return; }
+          state.salaries.push({ id: uid(), ts: Date.now(), date: d, amount: a, savings: isNaN(s) ? 0 : s });
+          state.salaries.sort(function (x, y) { return x.date < y.date ? -1 : 1; });
+          save(); closeSheet(); renderAll(); switchView("money");
+          toast("給料 " + fmtYen(a) + " を登録した");
+        });
+      });
+
+      /* ================= balance screen ================= */
+      function ruleText(m) { return (m.closeDay >= 31 ? "末締め" : m.closeDay + "日締め") + "・翌月" + m.payDay + "日払い"; }
+      // 給与サイクルごとの収支を集計する。
+      // 1サイクル＝給料日〜次の給料日の前日。サイクルの区切りは、給料の登録がある月は
+      // その登録日、登録がない月は給料日ルール（設定した給料日・土日は前倒し）で自動計算した日。
+      // 給料が未登録でも、支出やクレジットの引き落としがあればサイクルは立つ。
+      // 記録は入力した日時に発生したものとして扱い、即時払い（現金/iD・電子マネー）は
+      // 記録日に、クレジットは締め日・支払日ルールで計算した引き落とし日に計上する。
+      // 固定費も同じルールで毎月分を計上する。
+      function cycleFlows() {
+        var sals = state.salaries.slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+        var t = todayStr();
+        var salByDate = {}, salMonths = {};
+        sals.forEach(function (s) {
+          salByDate[s.date] = (salByDate[s.date] || 0) + (+s.amount || 0);
+          salMonths[s.date.slice(0, 7)] = true;
+        });
+        // 計上日（即時払いは記録日、クレジットは引き落とし日）と給料日・今日から対象範囲を決める
+        var marks = [t];
+        sals.forEach(function (s) { marks.push(s.date); });
+        state.records.forEach(function (r) {
+          var m = methodById(r.methodId);
+          if (r.type === "expense") marks.push(m && m.kind === "card" ? billingPayDate(r.date, m) : r.date);
+          else if (r.type === "charge" && m && m.kind === "card") marks.push(billingPayDate(r.date, m));
+        });
+        marks.sort();
+        var minD = marks[0], maxD = marks[marks.length - 1];
+        // 区切り日の集合：登録済みの給料日＋（給料登録のない月の）ルール上の給料日
+        var bset = {};
+        sals.forEach(function (s) { bset[s.date] = true; });
+        var d0 = parseDate(minD), d1 = parseDate(maxD);
+        var by = d0.getFullYear(), bm = d0.getMonth() - 1;
+        if (bm < 0) { bm = 11; by--; }
+        var ey = d1.getFullYear(), em = d1.getMonth() + 2;
+        while (em > 11) { em -= 12; ey++; }
+        while (by < ey || (by === ey && bm <= em)) {
+          var pd = toStr(paydayOf(by, bm));
+          if (!salMonths[pd.slice(0, 7)]) bset[pd] = true;
+          bm++; if (bm > 11) { bm = 0; by++; }
+        }
+        var bounds = Object.keys(bset).sort();
+        var lastEnd = nextPaydayAfter(bounds[bounds.length - 1]);
+        var cycles = bounds.map(function (b, i) {
+          return {
+            start: b,
+            end: i + 1 < bounds.length ? bounds[i + 1] : lastEnd,
+            salary: salByDate[b] || 0, immediate: 0, credit: 0, projected: false
+          };
+        });
+        function find(d) {
+          for (var i = 0; i < cycles.length; i++) if (d >= cycles[i].start && d < cycles[i].end) return cycles[i];
+          return null;
+        }
+        state.records.forEach(function (r) {
+          var m = methodById(r.methodId), c;
+          if (r.type === "expense") {
+            if (m && m.kind === "card") { c = find(billingPayDate(r.date, m)); if (c) c.credit += r.amount; }
+            else { c = find(r.date); if (c) c.immediate += r.amount; }
+          } else if (r.type === "charge") {
+            // カードからのチャージは引き落とし日に計上。現金/iDからのチャージは振替なので計上しない
+            if (m && m.kind === "card") { c = find(billingPayDate(r.date, m)); if (c) c.credit += r.amount; }
+          }
+          // adjust（残高調整）は現金の出入りではないので計上しない
+        });
+        var fromD = parseDate(cycles[0].start);
+        var from = new Date(fromD.getFullYear(), fromD.getMonth() - 1, 1);
+        var toD = parseDate(lastEnd);
+        var to = new Date(toD.getFullYear(), toD.getMonth() + 1, 0);
+        // 固定費は毎月発生するので、「今日を含むサイクルの次」までを計上対象にする
+        // （それより先の未来サイクルには、実績のある記録だけを反映する）
+        var fixedLimitStart = cycles[cycles.length - 1].start;
+        for (var ti = 0; ti < cycles.length; ti++) {
+          if (t >= cycles[ti].start && t < cycles[ti].end) {
+            fixedLimitStart = ti + 1 < cycles.length ? cycles[ti + 1].start : cycles[ti].start;
+            break;
+          }
+        }
+        state.fixedCosts.forEach(function (f) {
+          var m = methodById(f.methodId), amt = +f.amount || 0, c;
+          var y = from.getFullYear(), mo = from.getMonth();
+          while (new Date(y, mo, 1) <= to) {
+            var dstr = toStr(new Date(y, mo, Math.min(f.billDay, lastDay(y, mo))));
+            if (m && m.kind === "card") { c = find(billingPayDate(dstr, m)); if (c && c.start <= fixedLimitStart) c.credit += amt; }
+            else { c = find(dstr); if (c && c.start <= fixedLimitStart) c.immediate += amt; }
+            mo++; if (mo > 11) { mo = 0; y++; }
+          }
+        });
+        cycles.forEach(function (c) {
+          c.net = c.salary - c.immediate - c.credit;
+          // まだ始まっていない給料未登録のサイクルは「予定」（未来の引き落とし用）
+          c.projected = c.salary === 0 && c.start > t;
+        });
+        // 中身のないサイクル（給料・即時払い・クレジット引き落としのいずれも0）は表示しない
+        return cycles.filter(function (c) { return c.salary > 0 || c.immediate > 0 || c.credit > 0; });
+      }
+      function fmtSignedYen(n) { return n === 0 ? "¥0" : (n < 0 ? "−" : "+") + fmtYen(Math.abs(n)); }
+      function fmtBarVal(v) {
+        if (v === 0) return "¥0";
+        var sign = v < 0 ? "−" : "+", a = Math.abs(v);
+        if (a >= 10000) return sign + (Math.round(a / 1000) / 10) + "万";
+        return sign + "¥" + a.toLocaleString("ja-JP");
+      }
+      function renderBalance() {
+        var body = document.getElementById("balanceBody");
+        var cycles = cycleFlows();
+        if (!cycles.length) {
+          body.innerHTML = '<div class="empty-note">支出やクレジットの記録が増えると、給料日ごとの収支がここに表示されます。</div>';
+          return;
+        }
+        var disp = cycles.slice(-8);
+        // ---- 棒グラフ（スケール −10万〜+30万） ----
+        var W = 344, H = 212, top = 24, bottom = 32, left = 38, right = 4;
+        var plotW = W - left - right, plotH = H - top - bottom;
+        var MAXV = 300000, MINV = -100000;
+        function Y(v) { return top + (MAXV - v) / (MAXV - MINV) * plotH; }
+        var zeroY = Y(0);
+        var svg = '<svg class="chart-svg" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="給料サイクルごとの収支グラフ">';
+        var gridVals = [300000, 200000, 100000, 0, -100000];
+        var gridLabels = { "300000": "+30万", "200000": "+20万", "100000": "+10万", "0": "0", "-100000": "−10万" };
+        gridVals.forEach(function (v) {
+          var y = Y(v);
+          svg += '<line class="' + (v === 0 ? "zero" : "grid") + '" x1="' + left + '" y1="' + y + '" x2="' + (W - right) + '" y2="' + y + '"/>' +
+            '<text class="ylab" x="' + (left - 5) + '" y="' + (y + 3) + '">' + gridLabels[String(v)] + '</text>';
+        });
+        var slot = plotW / disp.length, bw = Math.min(42, slot * 0.58);
+        disp.forEach(function (c, i) {
+          var cx = left + slot * i + slot / 2, net = c.net;
+          var y1 = net >= 0 ? Y(net) : zeroY, y2 = net >= 0 ? zeroY : Y(net);
+          var h = Math.max(y2 - y1, net === 0 ? 0 : 2);
+          svg += '<rect x="' + (cx - bw / 2) + '" y="' + y1 + '" width="' + bw + '" height="' + h + '" rx="3" fill="' + (net < 0 ? "var(--danger)" : "var(--accent)") + '"/>';
+          var vy = net >= 0 ? y1 - 6 : y2 + 14;
+          svg += '<text class="bval' + (net < 0 ? " neg" : "") + '" x="' + cx + '" y="' + vy + '">' + fmtBarVal(net) + '</text>';
+          var d = parseDate(c.start);
+          svg += '<text class="xlab' + (c.projected ? " proj" : "") + '" x="' + cx + '" y="' + (H - 16) + '">' + (d.getMonth() + 1) + "/" + d.getDate() + '</text>';
+          if (c.projected) svg += '<text class="xlab proj" x="' + cx + '" y="' + (H - 4) + '">予定</text>';
+        });
+        svg += '</svg>';
+        var html = '<div class="card" style="padding:10px 8px 4px">' + svg + '</div>';
+        // ---- サイクルごとの内訳（新しい順） ----
+        for (var i = disp.length - 1; i >= 0; i--) {
+          var c = disp[i];
+          html += '<div class="card"><div class="flow-head">' + fmtDate(c.start) + 'の給料分' + (c.projected ? ' <span class="badge charge">予定</span>' : '') + '</div>';
+          if (c.salary > 0) html += '<div class="kv-row"><span class="k">給料</span><span class="v num">' + fmtSignedYen(c.salary) + '</span></div>';
+          if (c.immediate > 0) html += '<div class="kv-row"><span class="k">支出・固定費（即時払い）</span><span class="v num">' + fmtSignedYen(-c.immediate) + '</span></div>';
+          if (c.credit > 0) html += '<div class="kv-row"><span class="k">クレジット引き落とし</span><span class="v num credit">' + fmtSignedYen(-c.credit) + '</span></div>';
+          html += '<div class="kv-row flow-total"><span class="k" style="font-weight:800">合計</span><span class="v num' + (c.net < 0 ? " neg" : "") + '">' + fmtSignedYen(c.net) + '</span></div></div>';
+        }
+        body.innerHTML = html;
+      }
+
+      /* ================= history screen ================= */
+      var TRASH_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
+      function histActionsHtml(kind, id) {
+        return '<div class="hist-actions">' +
+          '<button type="button" class="hist-act edit" data-act="edit" data-kind="' + kind + '" data-id="' + id + '">修正</button>' +
+          '<button type="button" class="hist-act note" data-act="note" data-kind="' + kind + '" data-id="' + id + '">備考</button>' +
+          '<button type="button" class="hist-act del" data-act="del" data-kind="' + kind + '" data-id="' + id + '" aria-label="削除">' + TRASH_SVG + '</button></div>';
+      }
+      function noteHtml(obj) {
+        return obj.note ? '<div class="hist-note"><span class="note-label">備考：</span>' + esc(obj.note) + '</div>' : "";
+      }
+      function findRec(id) { for (var i = 0; i < state.records.length; i++) if (state.records[i].id === id) return state.records[i]; return null; }
+      function findSal(id) { for (var i = 0; i < state.salaries.length; i++) if (state.salaries[i].id === id) return state.salaries[i]; return null; }
+      function renderHistory() {
+        var body = document.getElementById("historyBody");
+        var items = [];
+        state.records.forEach(function (r) { items.push({ kind: "rec", date: r.date, ts: r.ts || 0, rec: r }); });
+        state.salaries.forEach(function (s) { items.push({ kind: "sal", date: s.date, ts: s.ts || 0, sal: s }); });
+        items.sort(function (a, b) { if (a.date !== b.date) return a.date < b.date ? 1 : -1; return b.ts - a.ts; });
+        if (!items.length) { body.innerHTML = '<div class="empty-note">まだ記録がありません。<br>入力画面から最初の1件を記録してみてください。</div>'; return; }
+        var html = "", lastDate = "";
+        items.forEach(function (it) {
+          if (it.date !== lastDate) { html += '<div class="date-head">' + fmtDate(it.date) + '</div>'; lastDate = it.date; }
+          if (it.kind === "sal") {
+            html += '<div class="hist-item" data-sal="' + it.sal.id + '"><div class="hist-main"><div class="left">' +
+              '<div class="what">給料 <span class="badge salary">収入</span></div>' +
+              '<div class="when">うち貯金分 ' + fmtYen(+it.sal.savings || 0) + '</div>' + noteHtml(it.sal) + '</div>' +
+              '<div class="amt num" style="color:var(--accent)">+' + fmtYen(it.sal.amount) + '</div></div>' +
+              histActionsHtml("sal", it.sal.id) + '</div>';
+          } else {
+            var r = it.rec, what, badge, amt;
+            if (r.type === "expense") { what = esc(r.methodName); badge = '<span class="badge expense">支出</span>'; amt = "−" + fmtYen(r.amount); }
+            else if (r.type === "charge") { what = esc(r.methodName) + " → " + esc(r.toName || ""); badge = '<span class="badge charge">チャージ</span>'; amt = fmtYen(r.amount); }
+            else { what = esc(r.methodName) + " 残高調整"; badge = '<span class="badge adjust">調整</span>'; amt = (r.amount >= 0 ? "+" : "−") + fmtYen(Math.abs(r.amount)); }
+            html += '<div class="hist-item" data-rec="' + r.id + '"><div class="hist-main"><div class="left">' +
+              '<div class="what">' + what + ' ' + badge + '</div>' + noteHtml(r) + '</div>' +
+              '<div class="amt num">' + amt + '</div></div>' +
+              histActionsHtml("rec", r.id) + '</div>';
+          }
+        });
+        body.innerHTML = html;
+        body.querySelectorAll(".hist-item").forEach(function (el) {
+          el.addEventListener("click", function (e) {
+            if (e.target.closest("button")) return;
+            var was = el.classList.contains("open");
+            body.querySelectorAll(".hist-item.open").forEach(function (o) { o.classList.remove("open"); });
+            if (!was) el.classList.add("open");
+          });
+        });
+        body.querySelectorAll("[data-act]").forEach(function (b) {
+          b.addEventListener("click", function () {
+            var kind = b.getAttribute("data-kind"), id = b.getAttribute("data-id"), act = b.getAttribute("data-act");
+            if (act === "edit") openEdit(kind, id);
+            else if (act === "note") openNote(kind, id);
+            else if (act === "del") openDeleteConfirm(kind, id);
+          });
+        });
+      }
+      function histTarget(kind, id) { return kind === "sal" ? findSal(id) : findRec(id); }
+      function detailRowsHtml(kind, obj) {
+        var rows = "";
+        function row(k, v) { rows += '<div class="kv-row"><span class="k">' + k + '</span><span class="v num">' + v + '</span></div>'; }
+        row("日付", fmtDate(obj.date));
+        if (kind === "sal") {
+          row("種別", "給料（収入）");
+          row("金額", "+" + fmtYen(obj.amount));
+          row("うち貯金分", fmtYen(+obj.savings || 0));
+        } else if (obj.type === "expense") {
+          row("種別", "支出");
+          row("支払い方法", esc(obj.methodName));
+          row("金額", "−" + fmtYen(obj.amount));
+        } else if (obj.type === "charge") {
+          row("種別", "チャージ");
+          row("支払い方法", esc(obj.methodName));
+          row("チャージ先", esc(obj.toName || ""));
+          row("金額", fmtYen(obj.amount));
+        } else {
+          row("種別", "残高調整");
+          row("対象", esc(obj.methodName));
+          row("金額", (obj.amount >= 0 ? "+" : "−") + fmtYen(Math.abs(obj.amount)));
+        }
+        if (obj.note) rows += '<div class="kv-row"><span class="k">備考</span><span class="v" style="white-space:normal;text-align:right">' + esc(obj.note) + '</span></div>';
+        return rows;
+      }
+      /* ---------- 履歴：備考（1行コメント） ---------- */
+      function openNote(kind, id) {
+        var obj = histTarget(kind, id); if (!obj) return;
+        openSheet('<h3>備考</h3>' +
+          '<div class="del-detail">' + detailRowsHtml(kind, obj) + '</div>' +
+          '<div class="fld"><label for="noteInput">コメント（1行）</label><input type="text" id="noteInput" maxlength="100" placeholder="例：コンビニ、電車代など" /></div>' +
+          (obj.note ? '<button type="button" class="ghost-btn" id="noteClear">備考を消す</button>' : '') +
+          '<div class="row-btns"><button type="button" class="cancel" id="noteCancel">キャンセル</button><button type="button" class="ok" id="noteOk">保存する</button></div>');
+        var input = document.getElementById("noteInput");
+        input.value = obj.note || "";
+        document.getElementById("noteCancel").addEventListener("click", closeSheet);
+        document.getElementById("noteOk").addEventListener("click", function () {
+          var v = input.value.trim();
+          if (v) obj.note = v; else delete obj.note;
+          save(); closeSheet(); renderAll(); switchView("history");
+          toast(v ? "備考を付けた" : "備考を消した");
+        });
+        var clearBtn = document.getElementById("noteClear");
+        if (clearBtn) clearBtn.addEventListener("click", function () {
+          delete obj.note; save(); closeSheet(); renderAll(); switchView("history");
+          toast("備考を消した");
+        });
+        setTimeout(function () { input.focus(); }, 60);
+      }
+      /* ---------- 履歴：削除確認 ---------- */
+      function openDeleteConfirm(kind, id) {
+        var obj = histTarget(kind, id); if (!obj) return;
+        openSheet('<h3>このデータを削除します。</h3>' +
+          '<div class="del-detail">' + detailRowsHtml(kind, obj) + '</div>' +
+          '<div class="row-btns"><button type="button" class="danger-ok" id="delYes">はい</button><button type="button" class="cancel" id="delNo">いいえ</button></div>');
+        document.getElementById("delNo").addEventListener("click", closeSheet);
+        document.getElementById("delYes").addEventListener("click", function () {
+          var list = kind === "sal" ? state.salaries : state.records, idx = -1;
+          list.forEach(function (x, i) { if (x.id === id) idx = i; });
+          if (idx < 0) { closeSheet(); return; }
+          var removed = list.splice(idx, 1)[0];
+          save(); closeSheet(); renderAll(); switchView("history");
+          toast("削除した", function () { list.splice(idx, 0, removed); save(); });
+        });
+      }
+      /* ---------- 履歴：修正 ---------- */
+      function openEdit(kind, id) {
+        var obj = histTarget(kind, id); if (!obj) return;
+        if (kind === "sal") openEditSalary(obj);
+        else if (obj.type === "adjust") openEditAdjust(obj);
+        else openEditRecord(obj);
+      }
+      function openEditSalary(sal) {
+        openSheet('<h3>給料を修正</h3>' +
+          '<div class="fld"><label for="eSalDate">給料日</label><input type="date" id="eSalDate" /></div>' +
+          '<div class="fld"><label for="eSalAmount">金額</label><input type="number" id="eSalAmount" inputmode="numeric" min="0" /></div>' +
+          '<div class="fld"><label for="eSalSavings">この月の貯金分</label><input type="number" id="eSalSavings" inputmode="numeric" min="0" /></div>' +
+          '<div class="row-btns"><button type="button" class="cancel" id="eSalCancel">キャンセル</button><button type="button" class="ok" id="eSalOk">保存する</button></div>');
+        document.getElementById("eSalDate").value = sal.date;
+        document.getElementById("eSalAmount").value = sal.amount;
+        document.getElementById("eSalSavings").value = +sal.savings || 0;
+        document.getElementById("eSalCancel").addEventListener("click", closeSheet);
+        document.getElementById("eSalOk").addEventListener("click", function () {
+          var d = document.getElementById("eSalDate").value || sal.date;
+          var a = parseInt(document.getElementById("eSalAmount").value, 10);
+          var s = parseInt(document.getElementById("eSalSavings").value, 10);
+          if (!a || a <= 0) { toast("給料の金額を入れてね"); return; }
+          sal.date = d; sal.amount = a; sal.savings = isNaN(s) ? 0 : s;
+          state.salaries.sort(function (x, y) { return x.date < y.date ? -1 : 1; });
+          save(); closeSheet(); renderAll(); switchView("history");
+          toast("給料を修正した");
+        });
+      }
+      function openEditAdjust(rec) {
+        openSheet('<h3>残高調整を修正</h3>' +
+          '<div class="fld"><label>対象</label><input type="text" id="eAdjMethod" disabled /></div>' +
+          '<div class="fld"><label for="eAdjVal">調整額（増やす場合はそのまま、減らす場合は − を付けて入力）</label><input type="number" id="eAdjVal" inputmode="numeric" /></div>' +
+          '<div class="row-btns"><button type="button" class="cancel" id="eAdjCancel">キャンセル</button><button type="button" class="ok" id="eAdjOk">保存する</button></div>');
+        document.getElementById("eAdjMethod").value = rec.methodName;
+        document.getElementById("eAdjVal").value = rec.amount;
+        document.getElementById("eAdjCancel").addEventListener("click", closeSheet);
+        document.getElementById("eAdjOk").addEventListener("click", function () {
+          var v = parseInt(document.getElementById("eAdjVal").value, 10);
+          if (isNaN(v) || v === 0) { toast("0以外の金額を入れてね"); return; }
+          rec.amount = v;
+          save(); closeSheet(); renderAll(); switchView("history");
+          toast("残高調整を修正した");
+        });
+      }
+      function openEditRecord(rec) {
+        var eMethod = rec.methodId && methodById(rec.methodId) ? rec.methodId : (state.methods.length ? state.methods[0].id : null);
+        var eType = rec.type === "charge" ? "charge" : "expense";
+        var eDest = rec.toId || null;
+        var eAmountStr = rec.amount ? String(Math.abs(rec.amount)) : "";
+        openSheet('<h3>記録を修正</h3>' +
+          '<div class="sec-label">支払い方法</div><div class="methods" id="eMethods"></div>' +
+          '<div class="amount-wrap"><div class="amount-display empty num" id="eAmountDisplay"><span class="yen">¥</span>0</div>' +
+          '<button class="clear-btn" id="eClearBtn" type="button">クリア</button></div>' +
+          '<div class="seg"><button type="button" id="eSegExpense">支出</button><button type="button" id="eSegCharge">チャージ</button></div>' +
+          '<div class="dest-row" id="eDestRow"><div class="sec-label">チャージ先</div><div class="dests" id="eDests"></div></div>' +
+          '<div class="edit-keypad" id="eKeypad">' +
+          '<button type="button" data-k="1">1</button><button type="button" data-k="2">2</button><button type="button" data-k="3">3</button>' +
+          '<button type="button" data-k="4">4</button><button type="button" data-k="5">5</button><button type="button" data-k="6">6</button>' +
+          '<button type="button" data-k="7">7</button><button type="button" data-k="8">8</button><button type="button" data-k="9">9</button>' +
+          '<button type="button" data-k="00" class="fn">00</button><button type="button" data-k="0">0</button><button type="button" data-k="bs" class="fn">⌫</button></div>' +
+          '<div class="edit-save-row"><button type="button" class="cancel" id="eCancel">キャンセル</button><button type="button" class="ok" id="eSave">保存する</button></div>');
+        var eMethodsEl = document.getElementById("eMethods"), eDestsEl = document.getElementById("eDests");
+        var eAmountEl = document.getElementById("eAmountDisplay"), eSaveBtn = document.getElementById("eSave");
+        function eAmountVal() { return eAmountStr ? parseInt(eAmountStr, 10) : 0; }
+        function eRenderAmount() {
+          var v = eAmountVal();
+          eAmountEl.innerHTML = '<span class="yen">¥</span>' + v.toLocaleString("ja-JP");
+          eAmountEl.classList.toggle("empty", v === 0);
+        }
+        function eValidate() {
+          var ok = eAmountVal() > 0 && !!methodById(eMethod);
+          if (ok && eType === "charge") ok = !!eDest && eDest !== eMethod;
+          eSaveBtn.disabled = !ok;
+        }
+        function eRenderMethods() {
+          eMethodsEl.innerHTML = "";
+          state.methods.forEach(function (m) {
+            var b = document.createElement("button");
+            b.type = "button"; b.className = "method-btn" + (m.id === eMethod ? " sel" : "");
+            b.innerHTML = '<span class="mtxt"><span class="mname"><span class="mname-in"></span></span><span class="mkind"></span></span>';
+            b.querySelector(".mname-in").textContent = m.name;
+            b.querySelector(".mkind").textContent = methodSubLabel(m);
+            b.addEventListener("click", function () { eMethod = m.id; eRenderMethods(); eRenderDests(); eValidate(); });
+            eMethodsEl.appendChild(b);
+          });
+          scheduleNameFit(eMethodsEl);
+        }
+        function eRenderDests() {
+          eDestsEl.innerHTML = "";
+          var list = state.methods.filter(function (m) { return m.kind === "emoney" && m.id !== eMethod; });
+          if (eDest && !list.some(function (m) { return m.id === eDest; })) eDest = null;
+          if (!eDest && list.length === 1) eDest = list[0].id;
+          list.forEach(function (m) {
+            var b = document.createElement("button");
+            b.type = "button"; b.className = "dest-btn" + (m.id === eDest ? " sel" : "");
+            b.textContent = m.name;
+            b.addEventListener("click", function () { eDest = m.id; eRenderDests(); eValidate(); });
+            eDestsEl.appendChild(b);
+          });
+          if (!list.length) eDestsEl.innerHTML = '<span style="font-size:12.5px;color:var(--ink-2)">チャージ先（電子マネー）が未登録です</span>';
+        }
+        function eSetType(t) {
+          eType = t;
+          document.getElementById("eSegExpense").className = t === "expense" ? "sel-expense" : "";
+          document.getElementById("eSegCharge").className = t === "charge" ? "sel-charge" : "";
+          document.getElementById("eDestRow").classList.toggle("open", t === "charge");
+          if (t === "charge") eRenderDests();
+          eValidate();
+        }
+        document.getElementById("eSegExpense").addEventListener("click", function () { eSetType("expense"); });
+        document.getElementById("eSegCharge").addEventListener("click", function () { eSetType("charge"); });
+        document.getElementById("eKeypad").addEventListener("click", function (e) {
+          var b = e.target.closest("button"); if (!b) return;
+          var k = b.getAttribute("data-k");
+          if (k === "bs") eAmountStr = eAmountStr.slice(0, -1);
+          else if (k === "00") { if (eAmountStr) eAmountStr += "00"; }
+          else { if (eAmountStr.length >= 7) return; eAmountStr = (eAmountStr + k).replace(/^0+(?=\d)/, ""); }
+          if (eAmountStr.length > 7) eAmountStr = eAmountStr.slice(0, 7);
+          eRenderAmount(); eValidate();
+        });
+        document.getElementById("eClearBtn").addEventListener("click", function () { eAmountStr = ""; eRenderAmount(); eValidate(); });
+        document.getElementById("eCancel").addEventListener("click", closeSheet);
+        eSaveBtn.addEventListener("click", function () {
+          var m = methodById(eMethod); if (!m) return;
+          rec.methodId = m.id; rec.methodName = m.name; rec.type = eType; rec.amount = eAmountVal();
+          if (eType === "charge") { var d = methodById(eDest); if (!d) return; rec.toId = d.id; rec.toName = d.name; }
+          else { delete rec.toId; delete rec.toName; }
+          save(); closeSheet(); renderAll(); switchView("history");
+          toast("記録を修正した");
+        });
+        eRenderMethods(); eRenderDests(); eRenderAmount(); eSetType(eType); eValidate();
+      }
+
+      /* ================= settings ================= */
+      function dayOptions(sel, includeLast) {
+        var h = "", d;
+        if (includeLast) h += '<option value="31"' + (sel >= 31 ? " selected" : "") + '>末日</option>';
+        for (d = 1; d <= 30; d++) h += '<option value="' + d + '"' + (d === sel ? " selected" : "") + ">" + d + "日</option>";
+        if (!includeLast) h += '<option value="31"' + (sel === 31 ? " selected" : "") + ">31日</option>";
+        return h;
+      }
+      function fillSettings() {
+        document.getElementById("baseSavings").value = state.baseSavings || "";
+        var ph = '<option value=""' + (!state.paydayDay ? " selected" : "") + ">未設定（月の初めで区切る）</option>";
+        for (var pd = 1; pd <= 31; pd++) ph += '<option value="' + pd + '"' + (state.paydayDay === pd ? " selected" : "") + ">" + pd + "日</option>";
+        document.getElementById("paydaySel").innerHTML = ph;
+        var fl = document.getElementById("fixedList"), fh = "";
+        if (!state.fixedCosts.length) fh = '<div style="font-size:12.5px;color:var(--ink-2);padding:8px 2px">固定費はまだ登録されていません</div>';
+        state.fixedCosts.forEach(function (f) {
+          var m = methodById(f.methodId);
+          fh += '<div class="set-item"><div><div class="si-name">' + esc(f.name || "固定費") + '</div>' +
+            '<div class="si-sub">' + esc(m ? m.name : "（削除済みの方法）") + ' ／ 毎月' + f.billDay + '日請求</div></div>' +
+            '<span style="display:flex;align-items:center;gap:8px"><span class="num" style="font-weight:800">' + fmtYen(f.amount) + '</span>' +
+            '<button type="button" class="mini-btn" data-delfx="' + f.id + '">削除</button></span></div>';
+        });
+        fl.innerHTML = fh;
+        fl.querySelectorAll("[data-delfx]").forEach(function (b) {
+          b.addEventListener("click", function () {
+            state.fixedCosts = state.fixedCosts.filter(function (f) { return f.id !== b.getAttribute("data-delfx"); });
+            save(); fillSettings(); toast("固定費を削除した");
+          });
+        });
+        var fxSel = document.getElementById("fxMethod");
+        fxSel.innerHTML = state.methods.map(function (m) { return '<option value="' + m.id + '">' + esc(m.name) + '</option>'; }).join("");
+        document.getElementById("fxDay").innerHTML = dayOptions(1, false);
+        var ml = document.getElementById("methodList"), mh = "";
+        state.methods.forEach(function (m) {
+          mh += '<div class="set-item"><div><div class="si-name">' + esc(m.name) + '</div>' +
+            '<div class="si-sub">' + methodSubLabel(m) + (m.kind === "card" ? " ／ " + ruleText(m) : "") + '</div></div>' +
+            '<button type="button" class="mini-btn" data-delmt="' + m.id + '">削除</button></div>';
+        });
+        ml.innerHTML = mh;
+        ml.querySelectorAll("[data-delmt]").forEach(function (b) {
+          b.addEventListener("click", function () {
+            var id = b.getAttribute("data-delmt");
+            if (state.methods.length <= 1) { toast("最後の1つは削除できません"); return; }
+            state.methods = state.methods.filter(function (m) { return m.id !== id; });
+            if (selMethod === id) selMethod = state.methods[0].id;
+            save(); fillSettings(); renderMethods(); renderDests(); validate();
+            toast("支払い方法を削除した");
+          });
+        });
+        document.getElementById("mtClose").innerHTML = dayOptions(31, true);
+        document.getElementById("mtPay").innerHTML = dayOptions(1, false);
+      }
+      document.getElementById("mtKind").addEventListener("change", function () {
+        document.getElementById("mtCardRow").style.display = this.value === "card" ? "" : "none";
+      });
+      document.getElementById("saveBaseSavings").addEventListener("click", function () {
+        var v = parseInt(document.getElementById("baseSavings").value, 10);
+        state.baseSavings = isNaN(v) || v < 0 ? 0 : v;
+        var pv = document.getElementById("paydaySel").value;
+        state.paydayDay = pv === "" ? null : +pv;
+        save(); toast("保存した");
+      });
+      document.getElementById("addFixed").addEventListener("click", function () {
+        var name = document.getElementById("fxName").value.trim();
+        var amount = parseInt(document.getElementById("fxAmount").value, 10);
+        if (!name) { toast("固定費の名前を入れてね"); return; }
+        if (!amount || amount <= 0) { toast("金額を入れてね"); return; }
+        state.fixedCosts.push({ id: uid(), name: name, methodId: document.getElementById("fxMethod").value, amount: amount, billDay: +document.getElementById("fxDay").value });
+        save(); document.getElementById("fxName").value = ""; document.getElementById("fxAmount").value = "";
+        fillSettings(); toast("固定費を追加した");
+      });
+      document.getElementById("addMethod").addEventListener("click", function () {
+        var name = document.getElementById("mtName").value.trim();
+        if (!name) { toast("名前を入れてね"); return; }
+        var kind = document.getElementById("mtKind").value;
+        var m = { id: uid(), name: name, kind: kind };
+        if (kind === "card") { m.closeDay = +document.getElementById("mtClose").value; m.payDay = +document.getElementById("mtPay").value; }
+        state.methods.push(m); save();
+        document.getElementById("mtName").value = "";
+        fillSettings(); renderMethods(); renderDests(); toast("支払い方法を追加した");
+      });
+      /* ================= バックアップ（書き出し・読み込み） =================
+         state には記録・支払い方法（カードの締め日/支払日ルール含む）・固定費・
+         給料・毎月の貯金額・給料日・残高調整がすべて入っているので、
+         JSON化した state がそのまま全データのバックアップになる */
+      function backupJson() { return JSON.stringify(state); }
+      function applyImport(obj) {
+        state = obj;
+        if (!Array.isArray(state.fixedCosts)) state.fixedCosts = [];
+        if (!Array.isArray(state.salaries)) state.salaries = [];
+        if (typeof state.baseSavings !== "number") state.baseSavings = +state.baseSavings || 0;
+        if (state.paydayDay === undefined) state.paydayDay = derivePaydayDay();
+        migrateCashLabel();
+        save();
+        if (!methodById(selMethod)) selMethod = state.methods.length ? state.methods[0].id : null;
+        selDest = null; amountStr = "";
+        setType("expense");
+        fillSettings(); renderMethods(); renderDests(); renderAmount(); validate(); renderAll();
+      }
+      document.getElementById("shareBtn").addEventListener("click", function () {
+        var text = backupJson();
+        document.getElementById("backupText").value = text;
+        var file = null;
+        try { file = new File([text], "kakeibo-backup.json", { type: "application/json" }); } catch (e) {}
+        try {
+          if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+            navigator.share({ files: [file] }).catch(function () {});
+          } else if (navigator.share) {
+            navigator.share({ title: "家計簿バックアップ", text: text }).catch(function () {});
+          } else {
+            toast("この環境では共有できないので「テキストをコピー」を使ってね");
+          }
+        } catch (e) {
+          toast("この環境では共有できないので「テキストをコピー」を使ってね");
+        }
+      });
+      document.getElementById("copyBtn").addEventListener("click", function () {
+        var ta = document.getElementById("backupText");
+        ta.value = backupJson();
+        ta.select();
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(ta.value).then(function () { toast("コピーした"); }, function () { document.execCommand("copy"); toast("コピーした"); });
+        else { document.execCommand("copy"); toast("コピーした"); }
+      });
+      function confirmImport(obj) {
+        openSheet('<h3>このデータで読み込みますか？</h3>' +
+          '<div class="del-detail">' +
+          '<div class="kv-row"><span class="k">記録</span><span class="v num">' + (obj.records || []).length + '件</span></div>' +
+          '<div class="kv-row"><span class="k">給料</span><span class="v num">' + (obj.salaries || []).length + '件</span></div>' +
+          '<div class="kv-row"><span class="k">支払い方法</span><span class="v num">' + (obj.methods || []).length + '件</span></div>' +
+          '<div class="kv-row"><span class="k">固定費</span><span class="v num">' + (obj.fixedCosts || []).length + '件</span></div></div>' +
+          '<div style="font-size:12.5px;color:var(--ink-2);margin-bottom:12px">今この端末にあるデータは上書きされます。</div>' +
+          '<div class="row-btns"><button type="button" class="danger-ok" id="impYes">はい</button><button type="button" class="cancel" id="impNo">いいえ</button></div>');
+        document.getElementById("impNo").addEventListener("click", closeSheet);
+        document.getElementById("impYes").addEventListener("click", function () {
+          closeSheet(); applyImport(obj); switchView("settings"); toast("読み込んだ");
+        });
+      }
+      var importFileEl = document.getElementById("importFile");
+      document.getElementById("fileBtn").addEventListener("click", function () { importFileEl.click(); });
+      importFileEl.addEventListener("change", function () {
+        var f = importFileEl.files && importFileEl.files[0];
+        importFileEl.value = "";
+        if (!f) return;
+        var reader = new FileReader();
+        reader.onload = function () {
+          var obj = null;
+          try { obj = JSON.parse(String(reader.result || "")); } catch (e) {}
+          if (!obj || !obj.methods || !obj.records) { toast("読み込めなかった（ファイルの内容を確認してね）"); return; }
+          confirmImport(obj);
+        };
+        reader.onerror = function () { toast("ファイルを読み込めなかった"); };
+        reader.readAsText(f);
+      });
+      var importArmed = false, importTimer = null;
+      document.getElementById("importBtn").addEventListener("click", function () {
+        var btn = this;
+        if (!importArmed) {
+          importArmed = true; btn.textContent = "本当に読み込む？（今のデータは上書きされます）";
+          importTimer = setTimeout(function () { importArmed = false; btn.textContent = "貼り付けた内容で読み込む"; }, 3500);
+          return;
+        }
+        clearTimeout(importTimer); importArmed = false; btn.textContent = "貼り付けた内容で読み込む";
+        try {
+          var obj = JSON.parse(document.getElementById("backupText").value);
+          if (!obj.methods || !obj.records) throw new Error("bad");
+          applyImport(obj);
+          toast("読み込んだ");
+        } catch (e) { toast("読み込めなかった（内容を確認してね）"); }
+      });
+
+      /* ================= navigation ================= */
+      function switchView(name) {
+        document.querySelectorAll(".view").forEach(function (v) { v.classList.remove("active"); });
+        document.getElementById("view-" + name).classList.add("active");
+        document.querySelectorAll(".tabbar button").forEach(function (b) { b.classList.toggle("on", b.getAttribute("data-view") === name); });
+        if (name === "input") scheduleNameFit(methodsEl);
+        if (name === "money") renderMoney();
+        if (name === "balance") renderBalance();
+        if (name === "history") renderHistory();
+        if (name === "settings") fillSettings();
+      }
+      document.querySelectorAll(".tabbar button").forEach(function (b) {
+        b.addEventListener("click", function () { switchView(b.getAttribute("data-view")); });
+      });
+
+      /* ================= 左右スワイプでタブ移動 ================= */
+      // 左スワイプ＝次のタブ、右スワイプ＝前のタブ。
+      // 縦スクロールやボタン操作と競合しないよう、横移動がしきい値を超え、かつ
+      // 縦移動を大きく上回る時だけ切り替える。シート表示中とフォーム入力中は対象外。
+      // スワイプと判定した直後の click（開始点にあったボタンが押される分）は1回だけ打ち消す
+      var TAB_ORDER = ["input", "money", "balance", "history", "settings"];
+      var swipeStart = null, suppressClick = false, suppressTimer = null;
+      document.addEventListener("touchstart", function (e) {
+        swipeStart = null;
+        if (e.touches.length !== 1) return;
+        if (overlay.classList.contains("open")) return;
+        if (e.target && e.target.closest && e.target.closest("input, textarea, select")) return;
+        swipeStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      }, { passive: true });
+      document.addEventListener("touchend", function (e) {
+        if (!swipeStart || !e.changedTouches.length) { swipeStart = null; return; }
+        var dx = e.changedTouches[0].clientX - swipeStart.x;
+        var dy = e.changedTouches[0].clientY - swipeStart.y;
+        swipeStart = null;
+        if (Math.abs(dx) < 56 || Math.abs(dx) < Math.abs(dy) * 1.8) return;
+        var cur = document.querySelector(".tabbar button.on");
+        var idx = cur ? TAB_ORDER.indexOf(cur.getAttribute("data-view")) : 0;
+        var next = dx < 0 ? idx + 1 : idx - 1;
+        if (next < 0 || next >= TAB_ORDER.length) return;
+        suppressClick = true;
+        clearTimeout(suppressTimer);
+        suppressTimer = setTimeout(function () { suppressClick = false; }, 400);
+        switchView(TAB_ORDER[next]);
+      }, { passive: true });
+      document.addEventListener("touchcancel", function () { swipeStart = null; });
+      document.addEventListener("click", function (e) {
+        if (!suppressClick) return;
+        suppressClick = false;
+        e.stopPropagation(); e.preventDefault();
+      }, true);
+      function renderAll() { renderMoney(); renderBalance(); renderHistory(); }
+
+      /* ================= init ================= */
+      renderMethods(); renderDests(); renderAmount(); validate();
+</script>
+    </body>
+</html>
