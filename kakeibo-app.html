@@ -56,6 +56,8 @@
         overscroll-behavior: none;
       }
       button { font-family: inherit; cursor: pointer; }
+      /* Chrome等でボタンを連打した時のダブルタップ拡大を防ぐ（スクロールやピンチは妨げない） */
+      button, input, select, textarea, a { touch-action: manipulation; }
       button:active { filter: brightness(.9); transform: translateY(1px); }
       .num { font-variant-numeric: tabular-nums; }
 
@@ -66,12 +68,11 @@
       .view.active { display: block; }
       .view.input-view { overflow: hidden; display: none; --pad-t: 10px; padding: var(--pad-t) 12px 10px; }
       .view.input-view.active { display: flex; flex-direction: column; }
-      /* 入力画面のレイアウト配分：境界（支出/チャージとテンキーの境目）の下限位置は画面の中心（50%）。
+      /* 入力画面のレイアウト配分：境界（チャージ行とテンキーの境目）の下限位置は画面の中心（50%）。
          上半分ゾーンは最大で画面の50%までしか伸びず、上のボタンが伸びても境界は中心より下には行かない。
-         余った縦幅はテンキー側が受けてキーが縦に伸びる。画面が短くテンキーが下限高さに
-         達する場合は、境界は中心より上に来る。チャージ先が出ても境界は中心を超えず、
-         ゾーンの中で支払い方法ボタンが縮むだけ */
-      .top-zone { flex: 1 1 auto; min-height: 0; max-height: 50%; display: flex; flex-direction: column; justify-content: space-between; min-width: 0; }
+         テンキーは最小高さで固定され、余った縦幅はテンキーの上の余白になる（テンキーと
+         記録ボタンは下側に固定）。画面が短い場合は境界が中心より上に来る */
+      .top-zone { flex: 1 1 auto; min-height: 0; max-height: 50%; display: flex; flex-direction: column; justify-content: space-between; min-width: 0; padding-bottom: 8px; }
       .methods-zone { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 
       /* ---------- tab bar ---------- */
@@ -128,9 +129,20 @@
       }
       .dest-btn.sel { background: var(--charge); border-color: var(--charge); color: #fff; }
 
-      /* テンキーは残りの縦幅を受けてキーが縦に伸びる。各キーの下限は --btn-min で、
-         テンキーの高さはこれ以上縮まない（その分、境界が画面の中心より上に来る） */
-      .keypad { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(4, 1fr); gap: 6px; margin-top: 8px; flex: 1 1 auto; min-height: calc(var(--btn-min) * 4 + 18px); }
+      /* チャージ行：左の「チャージ」ボタンでON/OFF。OFFの間は右のチップ列が無効（薄く表示）で、
+         ONにするとチップが活性化して選べる。チップ列は右側の余白いっぱいで横スクロールする */
+      .charge-row { display: flex; gap: 6px; height: var(--btn-min); flex-shrink: 0; min-width: 0; }
+      .charge-toggle { flex: 0 0 auto; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink-2); border-radius: 11px; padding: 0 15px; font-size: 14px; font-weight: 700; box-shadow: var(--shadow); }
+      .charge-toggle.on { background: var(--charge); border-color: var(--charge); color: #fff; }
+      .dest-strip { flex: 1 1 auto; min-width: 0; overflow-x: auto; overflow-y: hidden; display: flex; scrollbar-width: none; }
+      .dest-strip::-webkit-scrollbar { display: none; }
+      .charge-row .dests { flex-wrap: nowrap; height: 100%; }
+      .charge-row .dest-btn { white-space: nowrap; flex: 0 0 auto; min-height: 0; }
+      .charge-row.off .dests { opacity: .38; pointer-events: none; }
+
+      /* テンキーは最小高さ（--btn-min × 4段＋隙間）で高さ固定。縦に伸びない。
+         余った縦幅はテンキーの上の余白になり、テンキーと記録ボタンは画面の下側に固定される */
+      .keypad { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(4, 1fr); gap: 6px; margin-top: auto; flex: 0 0 auto; height: calc(var(--btn-min) * 4 + 18px); }
       .keypad button {
         background: var(--surface); border: 1px solid var(--line); border-radius: 11px;
         font-size: 21px; font-weight: 700; color: var(--ink); padding: 0; min-height: var(--btn-min); box-shadow: var(--shadow);
@@ -150,7 +162,7 @@
         .amount-wrap { margin-top: 4px; margin-bottom: 2px; }
         .amount-display { font-size: 29px; }
         .seg button { padding: 6px 0; }
-        .keypad { gap: 5px; margin-top: 6px; }
+        .keypad { gap: 5px; height: calc(var(--btn-min) * 4 + 15px); }
         .keypad button { font-size: 19px; }
         .record-btn { margin-top: 6px; }
       }
@@ -338,14 +350,9 @@
               <button class="clear-btn" id="clearBtn" type="button">クリア</button>
             </div>
 
-            <div>
-              <div class="seg" role="tablist">
-                <button type="button" id="segExpense" class="sel-expense">支出</button>
-                <button type="button" id="segCharge">チャージ</button>
-              </div>
-
-              <div class="dest-row" id="destRow">
-                <div class="sec-label">チャージ先</div>
+            <div class="charge-row off" id="chargeRow">
+              <button type="button" id="chargeToggle" class="charge-toggle">チャージ</button>
+              <div class="dest-strip" id="destStrip">
                 <div class="dests" id="dests"></div>
               </div>
             </div>
@@ -753,14 +760,18 @@
       }
       function setType(t) {
         selType = t;
-        document.getElementById("segExpense").className = t === "expense" ? "sel-expense" : "";
-        document.getElementById("segCharge").className = t === "charge" ? "sel-charge" : "";
-        document.getElementById("destRow").classList.toggle("open", t === "charge");
-        if (t === "charge") renderDests();
+        document.getElementById("chargeToggle").classList.toggle("on", t === "charge");
+        document.getElementById("chargeRow").classList.toggle("off", t !== "charge");
+        if (t === "charge") {
+          renderDests();
+          if (!selDest) {
+            var list = state.methods.filter(function (m) { return m.kind === "emoney" && m.id !== selMethod; });
+            if (list.length) { selDest = list[0].id; renderDests(); }
+          }
+        }
         validate();
       }
-      document.getElementById("segExpense").addEventListener("click", function () { setType("expense"); });
-      document.getElementById("segCharge").addEventListener("click", function () { setType("charge"); });
+      document.getElementById("chargeToggle").addEventListener("click", function () { setType(selType === "charge" ? "expense" : "charge"); });
       document.getElementById("keypad").addEventListener("click", function (e) {
         var b = e.target.closest("button"); if (!b) return;
         var k = b.getAttribute("data-k");
@@ -1567,7 +1578,7 @@
         swipeStart = null;
         if (e.touches.length !== 1) return;
         if (overlay.classList.contains("open")) return;
-        if (e.target && e.target.closest && e.target.closest("input, textarea, select")) return;
+        if (e.target && e.target.closest && e.target.closest("input, textarea, select, .dest-strip")) return;
         swipeStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
       }, { passive: true });
       document.addEventListener("touchend", function (e) {
