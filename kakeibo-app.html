@@ -133,7 +133,7 @@
       /* チャージタイル：「チャージ」ボタンとチャージ先チップ列を1枚のタイルにまとめる。
          OFFの間はチップ列が無効（薄く表示）で、ONにすると活性化して選べる。チップ列は横スクロール。
          ONの間はタイルの枠がチャージ色になる */
-      .charge-tile { display: flex; gap: 6px; height: var(--btn-min); flex-shrink: 0; min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); padding: 8px; margin-top: 8px; }
+      .charge-tile { display: flex; gap: 6px; height: var(--btn-min); box-sizing: border-box; flex-shrink: 0; min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); padding: 0 8px; margin-top: 8px; }
       .charge-tile:not(.off) { border-color: var(--charge); }
       .charge-toggle { flex: 0 0 auto; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink-2); border-radius: 11px; padding: 0 15px; font-size: 14px; font-weight: 700; box-shadow: var(--shadow); }
       .charge-toggle.on { background: var(--charge); border-color: var(--charge); color: #fff; }
