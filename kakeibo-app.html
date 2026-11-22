@@ -63,11 +63,12 @@
 
       /* ---------- shell ---------- */
       .app { display: flex; flex-direction: column; height: 100dvh; max-width: 560px; margin: 0 auto; }
-      .views { flex: 1; position: relative; min-height: 0; }
-      .view { position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: none; padding: 14px 14px 20px; display: none; }
-      .view.active { display: block; }
-      .view.input-view { overflow: hidden; display: none; --pad-t: 10px; padding: var(--pad-t) 12px 10px; }
-      .view.input-view.active { display: flex; flex-direction: column; }
+      .views { flex: 1; position: relative; min-height: 0; overflow: hidden; }
+      /* タブ画面は横一列のトラックに並び、スワイプ中は指に追従、離すとトランジションで吸着する */
+      .track { display: flex; height: 100%; transition: transform .3s ease; }
+      .track.dragging { transition: none; }
+      .view { position: relative; flex: 0 0 100%; width: 100%; height: 100%; min-width: 0; overflow-y: auto; overscroll-behavior: none; padding: 14px 14px 20px; }
+      .view.input-view { overflow: hidden; --pad-t: 10px; padding: var(--pad-t) 12px 10px; display: flex; flex-direction: column; }
       /* 入力画面のレイアウト配分：境界（チャージ行とテンキーの境目）の下限位置は画面の中心（50%）。
          上半分ゾーンは最大で画面の50%までしか伸びず、上のボタンが伸びても境界は中心より下には行かない。
          テンキーは最小高さで固定され、余った縦幅はテンキーの上の余白になる（テンキーと
@@ -140,9 +141,9 @@
       .charge-row .dest-btn { white-space: nowrap; flex: 0 0 auto; min-height: 0; }
       .charge-row.off .dests { opacity: .38; pointer-events: none; }
 
-      /* テンキーは最小高さ（--btn-min × 4段＋隙間）で高さ固定。縦に伸びない。
+      /* テンキーは1キー52px × 4段＋隙間で高さ固定。縦に伸びない。
          余った縦幅はテンキーの上の余白になり、テンキーと記録ボタンは画面の下側に固定される */
-      .keypad { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(4, 1fr); gap: 6px; margin-top: auto; flex: 0 0 auto; height: calc(var(--btn-min) * 4 + 18px); }
+      .keypad { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(4, 1fr); gap: 6px; margin-top: auto; flex: 0 0 auto; height: calc(52px * 4 + 18px); }
       .keypad button {
         background: var(--surface); border: 1px solid var(--line); border-radius: 11px;
         font-size: 21px; font-weight: 700; color: var(--ink); padding: 0; min-height: var(--btn-min); box-shadow: var(--shadow);
@@ -162,7 +163,7 @@
         .amount-wrap { margin-top: 4px; margin-bottom: 2px; }
         .amount-display { font-size: 29px; }
         .seg button { padding: 6px 0; }
-        .keypad { gap: 5px; height: calc(var(--btn-min) * 4 + 15px); }
+        .keypad { gap: 5px; height: calc(52px * 4 + 15px); }
         .keypad button { font-size: 19px; }
         .record-btn { margin-top: 6px; }
       }
@@ -336,6 +337,7 @@
       </nav>
 
       <div class="views">
+        <div class="track" id="track">
 
         <!-- ======== 入力 ======== -->
         <section class="view input-view active" id="view-input">
@@ -450,6 +452,7 @@
             <button class="danger-btn" id="importBtn" type="button">貼り付けた内容で読み込む</button>
           </details>
         </section>
+        </div>
       </div>
     </div>
 
@@ -1553,10 +1556,13 @@
       });
 
       /* ================= navigation ================= */
+      var TAB_ORDER = ["input", "money", "balance", "history", "settings"];
+      var track = document.getElementById("track");
       function switchView(name) {
         document.querySelectorAll(".view").forEach(function (v) { v.classList.remove("active"); });
         document.getElementById("view-" + name).classList.add("active");
         document.querySelectorAll(".tabbar button").forEach(function (b) { b.classList.toggle("on", b.getAttribute("data-view") === name); });
+        track.style.transform = "translateX(" + (-TAB_ORDER.indexOf(name) * 100) + "%)";
         if (name === "input") scheduleNameFit(methodsEl);
         if (name === "money") renderMoney();
         if (name === "balance") renderBalance();
@@ -1567,36 +1573,59 @@
         b.addEventListener("click", function () { switchView(b.getAttribute("data-view")); });
       });
 
-      /* ================= 左右スワイプでタブ移動 ================= */
-      // 左スワイプ＝次のタブ、右スワイプ＝前のタブ。
-      // 縦スクロールやボタン操作と競合しないよう、横移動がしきい値を超え、かつ
-      // 縦移動を大きく上回る時だけ切り替える。シート表示中とフォーム入力中は対象外。
-      // スワイプと判定した直後の click（開始点にあったボタンが押される分）は1回だけ打ち消す
-      var TAB_ORDER = ["input", "money", "balance", "history", "settings"];
-      var swipeStart = null, suppressClick = false, suppressTimer = null;
+      /* ================= 左右スワイプでタブ移動（指追従ページャー） ================= */
+      // 横方向のドラッグ中は画面が指に追従する。離した時に56pxを超えていれば隣のタブへ、
+      // 届かなければ元のタブに吸着する。縦方向の動きが勝った場合は通常スクロールに任せる。
+      // シート表示中・フォーム入力中・チャージチップ列の上は対象外。
+      // ドラッグした直後の click（開始点にあったボタンが押される分）は1回だけ打ち消す
+      var suppressClick = false, suppressTimer = null;
+      var drag = null;
+      function curTabIdx() {
+        var cur = document.querySelector(".tabbar button.on");
+        return cur ? TAB_ORDER.indexOf(cur.getAttribute("data-view")) : 0;
+      }
       document.addEventListener("touchstart", function (e) {
-        swipeStart = null;
+        drag = null;
         if (e.touches.length !== 1) return;
         if (overlay.classList.contains("open")) return;
         if (e.target && e.target.closest && e.target.closest("input, textarea, select, .dest-strip")) return;
-        swipeStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        drag = { x: e.touches[0].clientX, y: e.touches[0].clientY, mode: null, idx: curTabIdx(), w: track.clientWidth || window.innerWidth, dx: 0 };
       }, { passive: true });
-      document.addEventListener("touchend", function (e) {
-        if (!swipeStart || !e.changedTouches.length) { swipeStart = null; return; }
-        var dx = e.changedTouches[0].clientX - swipeStart.x;
-        var dy = e.changedTouches[0].clientY - swipeStart.y;
-        swipeStart = null;
-        if (Math.abs(dx) < 56 || Math.abs(dx) < Math.abs(dy) * 1.8) return;
-        var cur = document.querySelector(".tabbar button.on");
-        var idx = cur ? TAB_ORDER.indexOf(cur.getAttribute("data-view")) : 0;
-        var next = dx < 0 ? idx + 1 : idx - 1;
-        if (next < 0 || next >= TAB_ORDER.length) return;
-        suppressClick = true;
-        clearTimeout(suppressTimer);
-        suppressTimer = setTimeout(function () { suppressClick = false; }, 400);
-        switchView(TAB_ORDER[next]);
-      }, { passive: true });
-      document.addEventListener("touchcancel", function () { swipeStart = null; });
+      document.addEventListener("touchmove", function (e) {
+        if (!drag || e.touches.length !== 1) return;
+        var dx = e.touches[0].clientX - drag.x;
+        var dy = e.touches[0].clientY - drag.y;
+        if (!drag.mode) {
+          if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+          drag.mode = Math.abs(dx) > Math.abs(dy) * 1.2 ? "h" : "v";
+          if (drag.mode === "h") track.classList.add("dragging");
+        }
+        if (drag.mode !== "h") return;
+        e.preventDefault();
+        var eff = dx;
+        if ((drag.idx === 0 && dx > 0) || (drag.idx === TAB_ORDER.length - 1 && dx < 0)) eff = Math.round(dx * 0.35);
+        drag.dx = eff;
+        track.style.transform = "translateX(" + (-drag.idx * drag.w + eff) + "px)";
+      }, { passive: false });
+      function endDrag(cancelled) {
+        if (!drag) return;
+        var d = drag; drag = null;
+        track.classList.remove("dragging");
+        if (d.mode !== "h") return;
+        var next = d.idx;
+        if (!cancelled && Math.abs(d.dx) > 56) next = d.idx + (d.dx < 0 ? 1 : -1);
+        if (next < 0) next = 0;
+        if (next > TAB_ORDER.length - 1) next = TAB_ORDER.length - 1;
+        if (Math.abs(d.dx) > 10) {
+          suppressClick = true;
+          clearTimeout(suppressTimer);
+          suppressTimer = setTimeout(function () { suppressClick = false; }, 400);
+        }
+        if (next !== d.idx) switchView(TAB_ORDER[next]);
+        else track.style.transform = "translateX(" + (-d.idx * 100) + "%)";
+      }
+      document.addEventListener("touchend", function () { endDrag(false); }, { passive: true });
+      document.addEventListener("touchcancel", function () { endDrag(true); });
       document.addEventListener("click", function (e) {
         if (!suppressClick) return;
         suppressClick = false;
