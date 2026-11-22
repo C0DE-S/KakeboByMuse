@@ -742,7 +742,7 @@
         destsEl.innerHTML = "";
         var list = state.methods.filter(function (m) { return m.kind === "emoney" && m.id !== selMethod; });
         if (selDest && !list.some(function (m) { return m.id === selDest; })) selDest = null;
-        if (!selDest && list.length === 1) selDest = list[0].id;
+        if (!selDest && list.length) selDest = list[0].id;
         list.forEach(function (m) {
           var b = document.createElement("button");
           b.type = "button"; b.className = "dest-btn" + (m.id === selDest ? " sel" : "");
