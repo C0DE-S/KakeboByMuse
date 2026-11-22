@@ -3,6 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#0d7a48" />
     <meta name="color-scheme" content="light dark" />
     <link rel="icon" href="data:," />
     <title>Kakeibo App</title>
@@ -77,15 +78,15 @@
 
       /* ---------- tab bar ---------- */
       .tabbar {
-        display: flex; background: var(--surface); border-bottom: 1px solid var(--line);
+        display: flex; background: var(--accent); border-bottom: 1px solid rgba(0,0,0,.14);
         padding-top: env(safe-area-inset-top); flex-shrink: 0;
       }
       .tabbar button {
-        flex: 1; background: none; border: 0; padding: 8px 0 7px; color: var(--ink-2);
+        flex: 1; background: none; border: 0; padding: 8px 0 7px; color: rgba(255,255,255,.68);
         display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 10px; font-weight: 500;
       }
       .tabbar button svg { width: 23px; height: 23px; }
-      .tabbar button.on { color: var(--accent); font-weight: 700; }
+      .tabbar button.on { color: #fff; font-weight: 700; background: rgba(255,255,255,.20); }
 
       /* ---------- input screen ---------- */
       .sec-label { font-size: 11.5px; font-weight: 700; color: var(--ink-2); margin: 0 2px 5px; flex-shrink: 0; }
@@ -135,7 +136,7 @@
          ONの間はタイルの枠がチャージ色になる */
       .charge-tile { display: flex; gap: 6px; height: 52px; box-sizing: border-box; flex-shrink: 0; min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); padding: 8px; margin-top: 8px; }
       .charge-tile:not(.off) { border-color: var(--charge); }
-      .charge-toggle { flex: 0 0 auto; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink-2); border-radius: 11px; padding: 0 15px; font-size: 14px; font-weight: 700; box-shadow: var(--shadow); }
+      .charge-toggle { flex: 0 0 auto; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 11px; padding: 0 15px; font-size: 14px; font-weight: 700; box-shadow: var(--shadow); }
       .charge-toggle.on { background: var(--charge); border-color: var(--charge); color: #fff; }
       .dest-strip { flex: 1 1 auto; min-width: 0; overflow-x: auto; overflow-y: hidden; display: flex; scrollbar-width: none; }
       .dest-strip::-webkit-scrollbar { display: none; }
