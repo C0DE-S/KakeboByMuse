@@ -70,10 +70,10 @@
       .track.dragging { transition: none; }
       .view { position: relative; flex: 0 0 100%; width: 100%; height: 100%; min-width: 0; overflow-y: auto; overscroll-behavior: none; padding: 14px 14px 20px; }
       .view.input-view { overflow: hidden; --pad-t: 10px; padding: var(--pad-t) 12px 10px; display: flex; flex-direction: column; }
-      /* 入力画面のレイアウト配分：上半分ゾーン（支払い方法＋チャージタイル）は最大で画面の50%まで。
-         金額はテンキーのすぐ上に置き、余った縦幅は金額の上の余白になる（金額・テンキー・
-         記録ボタンは下側に固定）。画面が短い場合は上半分ゾーンが中心より上に来る */
-      .top-zone { flex: 1 1 auto; min-height: 0; max-height: 50%; display: flex; flex-direction: column; justify-content: space-between; min-width: 0; padding-bottom: 8px; }
+      /* 入力画面のレイアウト配分：上ゾーン（支払い方法＋チャージタイル）が余った縦幅を
+         すべて吸収し、支払い方法ボタンがチャージタイルのすぐ上まで伸びて埋める。
+         チャージタイル・金額・テンキー・記録ボタンはひとかたまりで下側に固定 */
+      .top-zone { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; justify-content: space-between; min-width: 0; padding-bottom: 8px; }
       .methods-zone { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 
       /* ---------- tab bar ---------- */
@@ -109,7 +109,6 @@
       .method-btn.sel .mkind { color: var(--accent-ink); opacity: .75; }
 
       .amount-wrap { margin: 6px 2px 4px; display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; flex-shrink: 0; }
-      .input-view > .amount-wrap { margin-top: auto; }
       .amount-display { font-size: 34px; font-weight: 900; letter-spacing: .5px; line-height: 1.1; text-align: right; flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; }
       .amount-display .yen { font-size: 19px; font-weight: 700; color: var(--ink-2); margin-right: 2px; }
       .amount-display.empty { color: var(--ink-2); opacity: .45; }
@@ -737,6 +736,7 @@
           methodsEl.appendChild(b);
         });
         if (!methodById(selMethod) && state.methods.length) selMethod = state.methods[0].id;
+        methodsEl.style.gridTemplateColumns = state.methods.length === 1 ? "minmax(0, 1fr)" : state.methods.length === 2 ? "repeat(2, minmax(0, 1fr))" : "";
         scheduleNameFit(methodsEl);
       }
       function renderDests() {
