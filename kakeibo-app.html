@@ -69,10 +69,9 @@
       .track.dragging { transition: none; }
       .view { position: relative; flex: 0 0 100%; width: 100%; height: 100%; min-width: 0; overflow-y: auto; overscroll-behavior: none; padding: 14px 14px 20px; }
       .view.input-view { overflow: hidden; --pad-t: 10px; padding: var(--pad-t) 12px 10px; display: flex; flex-direction: column; }
-      /* 入力画面のレイアウト配分：境界（チャージ行とテンキーの境目）の下限位置は画面の中心（50%）。
-         上半分ゾーンは最大で画面の50%までしか伸びず、上のボタンが伸びても境界は中心より下には行かない。
-         テンキーは最小高さで固定され、余った縦幅はテンキーの上の余白になる（テンキーと
-         記録ボタンは下側に固定）。画面が短い場合は境界が中心より上に来る */
+      /* 入力画面のレイアウト配分：上半分ゾーン（支払い方法＋チャージタイル）は最大で画面の50%まで。
+         金額はテンキーのすぐ上に置き、余った縦幅は金額の上の余白になる（金額・テンキー・
+         記録ボタンは下側に固定）。画面が短い場合は上半分ゾーンが中心より上に来る */
       .top-zone { flex: 1 1 auto; min-height: 0; max-height: 50%; display: flex; flex-direction: column; justify-content: space-between; min-width: 0; padding-bottom: 8px; }
       .methods-zone { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 
@@ -109,6 +108,7 @@
       .method-btn.sel .mkind { color: var(--accent-ink); opacity: .75; }
 
       .amount-wrap { margin: 6px 2px 4px; display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; flex-shrink: 0; }
+      .input-view > .amount-wrap { margin-top: auto; }
       .amount-display { font-size: 34px; font-weight: 900; letter-spacing: .5px; line-height: 1.1; text-align: right; flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; }
       .amount-display .yen { font-size: 19px; font-weight: 700; color: var(--ink-2); margin-right: 2px; }
       .amount-display.empty { color: var(--ink-2); opacity: .45; }
@@ -130,20 +130,22 @@
       }
       .dest-btn.sel { background: var(--charge); border-color: var(--charge); color: #fff; }
 
-      /* チャージ行：左の「チャージ」ボタンでON/OFF。OFFの間は右のチップ列が無効（薄く表示）で、
-         ONにするとチップが活性化して選べる。チップ列は右側の余白いっぱいで横スクロールする */
-      .charge-row { display: flex; gap: 6px; height: var(--btn-min); flex-shrink: 0; min-width: 0; }
+      /* チャージタイル：「チャージ」ボタンとチャージ先チップ列を1枚のタイルにまとめる。
+         OFFの間はチップ列が無効（薄く表示）で、ONにすると活性化して選べる。チップ列は横スクロール。
+         ONの間はタイルの枠がチャージ色になる */
+      .charge-tile { display: flex; gap: 6px; height: var(--btn-min); flex-shrink: 0; min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); padding: 8px; margin-top: 8px; }
+      .charge-tile:not(.off) { border-color: var(--charge); }
       .charge-toggle { flex: 0 0 auto; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink-2); border-radius: 11px; padding: 0 15px; font-size: 14px; font-weight: 700; box-shadow: var(--shadow); }
       .charge-toggle.on { background: var(--charge); border-color: var(--charge); color: #fff; }
       .dest-strip { flex: 1 1 auto; min-width: 0; overflow-x: auto; overflow-y: hidden; display: flex; scrollbar-width: none; }
       .dest-strip::-webkit-scrollbar { display: none; }
-      .charge-row .dests { flex-wrap: nowrap; height: 100%; }
-      .charge-row .dest-btn { white-space: nowrap; flex: 0 0 auto; min-height: 0; }
-      .charge-row.off .dests { opacity: .38; pointer-events: none; }
+      .charge-tile .dests { flex-wrap: nowrap; height: 100%; }
+      .charge-tile .dest-btn { white-space: nowrap; flex: 0 0 auto; min-height: 0; }
+      .charge-tile.off .dests { opacity: .38; pointer-events: none; }
 
       /* テンキーは1キー52px × 4段＋隙間で高さ固定。縦に伸びない。
-         余った縦幅はテンキーの上の余白になり、テンキーと記録ボタンは画面の下側に固定される */
-      .keypad { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(4, 1fr); gap: 6px; margin-top: auto; flex: 0 0 auto; height: calc(52px * 4 + 18px); }
+         余った縦幅は金額の上の余白になり、金額・テンキー・記録ボタンは画面の下側に固定される */
+      .keypad { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(4, 1fr); gap: 6px; margin-top: 8px; flex: 0 0 auto; height: calc(52px * 4 + 18px); }
       .keypad button {
         background: var(--surface); border: 1px solid var(--line); border-radius: 11px;
         font-size: 21px; font-weight: 700; color: var(--ink); padding: 0; min-height: var(--btn-min); box-shadow: var(--shadow);
@@ -163,7 +165,7 @@
         .amount-wrap { margin-top: 4px; margin-bottom: 2px; }
         .amount-display { font-size: 29px; }
         .seg button { padding: 6px 0; }
-        .keypad { gap: 5px; height: calc(52px * 4 + 15px); }
+        .keypad { gap: 5px; margin-top: 6px; height: calc(52px * 4 + 15px); }
         .keypad button { font-size: 19px; }
         .record-btn { margin-top: 6px; }
       }
@@ -347,17 +349,17 @@
               <div class="methods" id="methods"></div>
             </div>
 
-            <div class="amount-wrap">
-              <div class="amount-display empty num" id="amountDisplay"><span class="yen">¥</span>0</div>
-              <button class="clear-btn" id="clearBtn" type="button">クリア</button>
-            </div>
-
-            <div class="charge-row off" id="chargeRow">
+            <div class="charge-tile off" id="chargeRow">
               <button type="button" id="chargeToggle" class="charge-toggle">チャージ</button>
               <div class="dest-strip" id="destStrip">
                 <div class="dests" id="dests"></div>
               </div>
             </div>
+          </div>
+
+          <div class="amount-wrap">
+            <div class="amount-display empty num" id="amountDisplay"><span class="yen">¥</span>0</div>
+            <button class="clear-btn" id="clearBtn" type="button">クリア</button>
           </div>
 
           <div class="keypad" id="keypad">
