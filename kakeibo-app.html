@@ -213,6 +213,22 @@
       .del-detail .kv-row .v { font-size: 14.5px; white-space: normal; text-align: right; overflow-wrap: anywhere; }
       .sheet .row-btns button.danger-ok { background: var(--danger); color: #fff; }
       .edit-save-row { display: flex; gap: 9px; margin-top: 10px; }
+      /* 記録を修正シート：スクロールさせずに全要素を収めるフィットレイアウト */
+      .sheet.sheet-fit { height: 96dvh; max-height: 96dvh; overflow: hidden; display: flex; flex-direction: column; transition: transform .25s ease; }
+      .edit-form { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+      .edit-form > * { flex-shrink: 0; }
+      .edit-form > .methods { flex: 1 1 auto; min-height: 0; grid-auto-rows: minmax(0, 1fr); }
+      .edit-form .method-btn { min-height: 0; }
+      .edit-form .keypad { height: 184px; }
+      .edit-form .fld { margin-bottom: 8px; }
+      .edit-form .fld input { padding-top: 7px; padding-bottom: 7px; }
+      .sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; touch-action: none; }
+      .sheet-head h3 { margin: 0; }
+      .sheet-x { width: 36px; height: 36px; border: 0; border-radius: 999px; background: var(--surface-2); color: var(--ink-2); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; padding: 0; }
+      .sheet-x svg { width: 17px; height: 17px; }
+      @media (max-height: 680px) {
+        .edit-form .keypad { height: 164px; }
+      }
       .edit-save-row button { flex: 1; border-radius: 11px; font-size: 15px; font-weight: 800; padding: 12px 0; border: 0; }
       .edit-save-row .cancel { background: var(--surface-2); color: var(--ink); }
       .edit-save-row .ok { background: var(--accent); color: var(--accent-ink); }
@@ -651,7 +667,7 @@
       /* ================= modal ================= */
       var overlay = document.getElementById("overlay"), sheet = document.getElementById("sheet");
       function openSheet(html) { sheet.innerHTML = html; overlay.classList.add("open"); }
-      function closeSheet() { overlay.classList.remove("open"); sheet.innerHTML = ""; }
+      function closeSheet() { overlay.classList.remove("open"); sheet.innerHTML = ""; sheet.classList.remove("sheet-fit"); sheet.style.transform = ""; sheet.style.transition = ""; }
       overlay.addEventListener("click", function (e) { if (e.target === overlay) closeSheet(); });
 
       /* ================= プルリフレッシュ防止 ================= */
@@ -1206,7 +1222,8 @@
         var eType = rec.type === "charge" ? "charge" : "expense";
         var eDest = rec.toId || null;
         var eAmountStr = rec.amount ? String(Math.abs(rec.amount)) : "";
-        openSheet('<h3>記録を修正</h3>' +
+        openSheet('<div class="edit-form"><div class="sheet-head"><h3>記録を修正</h3>' +
+          '<button type="button" class="sheet-x" id="eCloseX" aria-label="閉じる"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button></div>' +
           '<div class="fld"><label for="eRecDate">日付</label><input type="date" id="eRecDate" /></div>' +
           '<div class="sec-label">支払い方法</div><div class="methods" id="eMethods"></div>' +
           '<div class="charge-tile off" id="eChargeRow"><button type="button" id="eChargeToggle" class="charge-toggle">チャージ</button>' +
@@ -1218,7 +1235,9 @@
           '<button type="button" data-k="4">4</button><button type="button" data-k="5">5</button><button type="button" data-k="6">6</button>' +
           '<button type="button" data-k="7">7</button><button type="button" data-k="8">8</button><button type="button" data-k="9">9</button>' +
           '<button type="button" data-k="00" class="fn">00</button><button type="button" data-k="0">0</button><button type="button" data-k="bs" class="fn">⌫</button></div>' +
-          '<div class="edit-save-row"><button type="button" class="cancel" id="eCancel">キャンセル</button><button type="button" class="ok" id="eSave">保存する</button></div>');
+          '<div class="edit-save-row"><button type="button" class="cancel" id="eCancel">キャンセル</button><button type="button" class="ok" id="eSave">保存する</button></div></div>');
+        sheet.classList.add("sheet-fit");
+        document.getElementById("eCloseX").addEventListener("click", closeSheet);
         document.getElementById("eRecDate").value = rec.date;
         var eMethodsEl = document.getElementById("eMethods"), eDestsEl = document.getElementById("eDests");
         var eAmountEl = document.getElementById("eAmountDisplay"), eSaveBtn = document.getElementById("eSave");
@@ -1280,6 +1299,30 @@
         });
         document.getElementById("eClearBtn").addEventListener("click", function () { eAmountStr = ""; eRenderAmount(); eValidate(); });
         document.getElementById("eCancel").addEventListener("click", closeSheet);
+        (function () {
+          var head = sheet.querySelector(".sheet-head");
+          if (!head) return;
+          var startY = null, dy = 0;
+          head.addEventListener("pointerdown", function (e) {
+            startY = e.clientY; dy = 0;
+            sheet.style.transition = "none";
+            try { head.setPointerCapture(e.pointerId); } catch (err) {}
+          });
+          head.addEventListener("pointermove", function (e) {
+            if (startY === null) return;
+            dy = Math.max(0, e.clientY - startY);
+            sheet.style.transform = "translateY(" + dy + "px)";
+          });
+          function endDrag() {
+            if (startY === null) return;
+            var shouldClose = dy > 70;
+            sheet.style.transition = ""; sheet.style.transform = "";
+            startY = null;
+            if (shouldClose) closeSheet();
+          }
+          head.addEventListener("pointerup", endDrag);
+          head.addEventListener("pointercancel", endDrag);
+        })();
         eSaveBtn.addEventListener("click", function () {
           var m = methodById(eMethod); if (!m) return;
           rec.date = document.getElementById("eRecDate").value || rec.date;
