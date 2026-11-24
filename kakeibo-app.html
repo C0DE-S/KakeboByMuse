@@ -269,6 +269,9 @@
         color: var(--ink); font-size: 16px; padding: 10px 11px; font-family: inherit;
       }
       .fld textarea { font-size: 12px; min-height: 84px; }
+      /* iOSのネイティブ日付入力は固有幅で親を突き抜けるため、外観をリセットして幅を親に合わせる。
+         セレクタを全体に効かせてあるので、今後どこに日付入力を足してもはみ出さない */
+      input[type="date"] { -webkit-appearance: none; appearance: none; display: block; width: 100%; max-width: 100%; min-width: 0; }
       .fld-row { display: flex; gap: 9px; }
       .fld-row .fld { flex: 1; }
       .set-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 2px; border-bottom: 1px solid var(--line); }
