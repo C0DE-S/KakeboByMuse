@@ -1417,8 +1417,10 @@
           fh += '<div class="set-item"><div><div class="si-name">' + esc(f.name || "固定費") + '</div>' +
             '<div class="si-sub">' + esc(m ? m.name : "（削除済みの方法）") + ' ／ 毎月' + f.billDay + '日請求</div></div>' +
             '<span style="display:flex;align-items:center;gap:8px"><span class="num" style="font-weight:800">' + fmtYen(f.amount) + '</span>' +
-            '<button type="button" class="mini-btn" data-editfx="' + f.id + '">編集</button>' +
-            '<button type="button" class="mini-btn" data-delfx="' + f.id + '">削除</button></span></div>';
+            '<span class="icon-actions">' +
+            '<button type="button" class="icon-btn edit" data-editfx="' + f.id + '" aria-label="' + esc(f.name || "固定費") + 'を編集">' + EDIT_SVG + '</button>' +
+            '<button type="button" class="icon-btn del" data-delfx="' + f.id + '" aria-label="' + esc(f.name || "固定費") + 'を削除">' + TRASH_SVG + '</button>' +
+            '</span></span></div>';
         });
         fl.innerHTML = fh;
         fl.querySelectorAll("[data-editfx]").forEach(function (b) {
