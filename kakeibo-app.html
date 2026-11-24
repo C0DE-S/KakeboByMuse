@@ -214,15 +214,16 @@
       .sheet .row-btns button.danger-ok { background: var(--danger); color: #fff; }
       .edit-save-row { display: flex; gap: 9px; margin-top: 10px; }
       /* 記録を修正シート：スクロールさせずに全要素を収めるフィットレイアウト */
-      .sheet.sheet-fit { height: 96dvh; max-height: 96dvh; overflow: hidden; display: flex; flex-direction: column; transition: transform .25s ease; }
+      .sheet.sheet-fit { height: 96dvh; max-height: 96dvh; overflow: hidden; display: flex; flex-direction: column; transition: transform .25s ease; padding-top: 10px; }
       .edit-form { display: flex; flex-direction: column; flex: 1; min-height: 0; }
       .edit-form > * { flex-shrink: 0; }
       .edit-form > .methods { flex: 1 1 auto; min-height: 0; grid-auto-rows: minmax(0, 1fr); }
       .edit-form .method-btn { min-height: 0; }
       .edit-form .keypad { height: 184px; }
+      .edit-form .keypad button { min-height: 0; }
       .edit-form .fld { margin-bottom: 8px; }
       .edit-form .fld input { padding-top: 7px; padding-bottom: 7px; }
-      .sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; touch-action: none; }
+      .sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 0; touch-action: none; }
       .sheet-head h3 { margin: 0; }
       .sheet-x { width: 36px; height: 36px; border: 0; border-radius: 999px; background: var(--surface-2); color: var(--ink-2); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; padding: 0; }
       .sheet-x svg { width: 17px; height: 17px; }
