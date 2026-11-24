@@ -1197,15 +1197,18 @@
       }
       function openEditAdjust(rec) {
         openSheet('<h3>残高調整を修正</h3>' +
+          '<div class="fld"><label for="eAdjDate">日付</label><input type="date" id="eAdjDate" /></div>' +
           '<div class="fld"><label>対象</label><input type="text" id="eAdjMethod" disabled /></div>' +
           '<div class="fld"><label for="eAdjVal">調整額（増やす場合はそのまま、減らす場合は − を付けて入力）</label><input type="number" id="eAdjVal" inputmode="numeric" /></div>' +
           '<div class="row-btns"><button type="button" class="cancel" id="eAdjCancel">キャンセル</button><button type="button" class="ok" id="eAdjOk">保存する</button></div>');
+        document.getElementById("eAdjDate").value = rec.date;
         document.getElementById("eAdjMethod").value = rec.methodName;
         document.getElementById("eAdjVal").value = rec.amount;
         document.getElementById("eAdjCancel").addEventListener("click", closeSheet);
         document.getElementById("eAdjOk").addEventListener("click", function () {
           var v = parseInt(document.getElementById("eAdjVal").value, 10);
           if (isNaN(v) || v === 0) { toast("0以外の金額を入れてね"); return; }
+          rec.date = document.getElementById("eAdjDate").value || rec.date;
           rec.amount = v;
           save(); closeSheet(); renderAll(); switchView("history");
           toast("残高調整を修正した");
@@ -1217,6 +1220,7 @@
         var eDest = rec.toId || null;
         var eAmountStr = rec.amount ? String(Math.abs(rec.amount)) : "";
         openSheet('<h3>記録を修正</h3>' +
+          '<div class="fld"><label for="eRecDate">日付</label><input type="date" id="eRecDate" /></div>' +
           '<div class="sec-label">支払い方法</div><div class="methods" id="eMethods"></div>' +
           '<div class="amount-wrap"><div class="amount-display empty num" id="eAmountDisplay"><span class="yen">¥</span>0</div>' +
           '<button class="clear-btn" id="eClearBtn" type="button">クリア</button></div>' +
@@ -1228,6 +1232,7 @@
           '<button type="button" data-k="7">7</button><button type="button" data-k="8">8</button><button type="button" data-k="9">9</button>' +
           '<button type="button" data-k="00" class="fn">00</button><button type="button" data-k="0">0</button><button type="button" data-k="bs" class="fn">⌫</button></div>' +
           '<div class="edit-save-row"><button type="button" class="cancel" id="eCancel">キャンセル</button><button type="button" class="ok" id="eSave">保存する</button></div>');
+        document.getElementById("eRecDate").value = rec.date;
         var eMethodsEl = document.getElementById("eMethods"), eDestsEl = document.getElementById("eDests");
         var eAmountEl = document.getElementById("eAmountDisplay"), eSaveBtn = document.getElementById("eSave");
         function eAmountVal() { return eAmountStr ? parseInt(eAmountStr, 10) : 0; }
@@ -1291,6 +1296,7 @@
         document.getElementById("eCancel").addEventListener("click", closeSheet);
         eSaveBtn.addEventListener("click", function () {
           var m = methodById(eMethod); if (!m) return;
+          rec.date = document.getElementById("eRecDate").value || rec.date;
           rec.methodId = m.id; rec.methodName = m.name; rec.type = eType; rec.amount = eAmountVal();
           if (eType === "charge") { var d = methodById(eDest); if (!d) return; rec.toId = d.id; rec.toName = d.name; }
           else { delete rec.toId; delete rec.toName; }
@@ -1307,6 +1313,35 @@
         for (d = 1; d <= 30; d++) h += '<option value="' + d + '"' + (d === sel ? " selected" : "") + ">" + d + "日</option>";
         if (!includeLast) h += '<option value="31"' + (sel === 31 ? " selected" : "") + ">31日</option>";
         return h;
+      }
+      /* ---------- 設定：固定費の編集 ---------- */
+      function openEditFixed(id) {
+        var f = null;
+        state.fixedCosts.forEach(function (x) { if (x.id === id) f = x; });
+        if (!f) return;
+        openSheet('<h3>固定費を編集</h3>' +
+          '<div class="fld"><label for="efxName">名前</label><input type="text" id="efxName" placeholder="例：家賃、スマホ代" /></div>' +
+          '<div class="fld-row">' +
+          '<div class="fld"><label for="efxMethod">支払い方法</label><select id="efxMethod"></select></div>' +
+          '<div class="fld"><label for="efxDay">請求日</label><select id="efxDay"></select></div></div>' +
+          '<div class="fld"><label for="efxAmount">金額</label><input type="number" id="efxAmount" inputmode="numeric" min="0" /></div>' +
+          '<div class="row-btns"><button type="button" class="cancel" id="efxCancel">キャンセル</button><button type="button" class="ok" id="efxOk">保存する</button></div>');
+        document.getElementById("efxName").value = f.name || "";
+        var mSel = document.getElementById("efxMethod");
+        mSel.innerHTML = state.methods.map(function (m) { return '<option value="' + m.id + '">' + esc(m.name) + '</option>'; }).join("");
+        if (methodById(f.methodId)) mSel.value = f.methodId;
+        document.getElementById("efxDay").innerHTML = dayOptions(f.billDay, false);
+        document.getElementById("efxAmount").value = f.amount;
+        document.getElementById("efxCancel").addEventListener("click", closeSheet);
+        document.getElementById("efxOk").addEventListener("click", function () {
+          var name = document.getElementById("efxName").value.trim();
+          var amount = parseInt(document.getElementById("efxAmount").value, 10);
+          if (!name) { toast("固定費の名前を入れてね"); return; }
+          if (!amount || amount <= 0) { toast("金額を入れてね"); return; }
+          f.name = name; f.methodId = mSel.value; f.amount = amount; f.billDay = +document.getElementById("efxDay").value;
+          save(); closeSheet(); fillSettings(); renderAll();
+          toast("固定費を保存した");
+        });
       }
       /* ---------- 設定：支払い方法の編集・削除 ---------- */
       function openEditMethod(id) {
@@ -1382,9 +1417,13 @@
           fh += '<div class="set-item"><div><div class="si-name">' + esc(f.name || "固定費") + '</div>' +
             '<div class="si-sub">' + esc(m ? m.name : "（削除済みの方法）") + ' ／ 毎月' + f.billDay + '日請求</div></div>' +
             '<span style="display:flex;align-items:center;gap:8px"><span class="num" style="font-weight:800">' + fmtYen(f.amount) + '</span>' +
+            '<button type="button" class="mini-btn" data-editfx="' + f.id + '">編集</button>' +
             '<button type="button" class="mini-btn" data-delfx="' + f.id + '">削除</button></span></div>';
         });
         fl.innerHTML = fh;
+        fl.querySelectorAll("[data-editfx]").forEach(function (b) {
+          b.addEventListener("click", function () { openEditFixed(b.getAttribute("data-editfx")); });
+        });
         fl.querySelectorAll("[data-delfx]").forEach(function (b) {
           b.addEventListener("click", function () {
             state.fixedCosts = state.fixedCosts.filter(function (f) { return f.id !== b.getAttribute("data-delfx"); });
