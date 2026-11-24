@@ -114,14 +114,6 @@
       .amount-display.empty { color: var(--ink-2); opacity: .45; }
       .clear-btn { background: var(--surface-2); border: 0; border-radius: 999px; color: var(--ink-2); font-size: 12px; font-weight: 700; padding: 6px 11px; flex-shrink: 0; margin-bottom: 5px; }
 
-      .seg { display: flex; background: var(--surface-2); border-radius: 11px; padding: 3px; gap: 3px; flex-shrink: 0; }
-      .seg button { flex: 1; border: 0; background: transparent; border-radius: 8px; padding: 7px 0; font-size: 14.5px; font-weight: 700; color: var(--ink-2); min-height: var(--btn-min); }
-      .seg button.sel-expense { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
-      .seg button.sel-charge { background: var(--charge); color: #fff; }
-
-      .dest-row { display: none; flex-shrink: 0; }
-      .dest-row.open { display: block; }
-      .dest-row .sec-label { margin-top: 7px; }
       .dests { display: flex; gap: 6px; flex-wrap: wrap; }
       .dest-btn {
         background: var(--surface); border: 1.5px solid var(--line); border-radius: 999px;
@@ -164,7 +156,6 @@
         .view.input-view { --pad-t: 8px; padding-bottom: 8px; --btn-min: 39px; }
         .amount-wrap { margin-top: 4px; margin-bottom: 2px; }
         .amount-display { font-size: 29px; }
-        .seg button { padding: 6px 0; }
         .keypad { gap: 5px; margin-top: 6px; height: calc(52px * 4 + 15px); }
         .keypad button { font-size: 19px; }
         .record-btn { margin-top: 6px; }
@@ -221,13 +212,6 @@
       .del-detail .kv-row .k { font-size: 12.5px; color: var(--ink-2); font-weight: 700; }
       .del-detail .kv-row .v { font-size: 14.5px; white-space: normal; text-align: right; overflow-wrap: anywhere; }
       .sheet .row-btns button.danger-ok { background: var(--danger); color: #fff; }
-      .edit-keypad { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(4, 1fr); gap: 6px; margin-top: 8px; height: 176px; }
-      .edit-keypad button {
-        background: var(--surface); border: 1px solid var(--line); border-radius: 11px;
-        font-size: 19px; font-weight: 700; color: var(--ink); padding: 0; box-shadow: var(--shadow);
-        display: flex; align-items: center; justify-content: center;
-      }
-      .edit-keypad button.fn { font-size: 15px; color: var(--ink-2); background: var(--surface-2); }
       .edit-save-row { display: flex; gap: 9px; margin-top: 10px; }
       .edit-save-row button { flex: 1; border-radius: 11px; font-size: 15px; font-weight: 800; padding: 12px 0; border: 0; }
       .edit-save-row .cancel { background: var(--surface-2); color: var(--ink); }
@@ -1225,11 +1209,11 @@
         openSheet('<h3>記録を修正</h3>' +
           '<div class="fld"><label for="eRecDate">日付</label><input type="date" id="eRecDate" /></div>' +
           '<div class="sec-label">支払い方法</div><div class="methods" id="eMethods"></div>' +
+          '<div class="charge-tile off" id="eChargeRow"><button type="button" id="eChargeToggle" class="charge-toggle">チャージ</button>' +
+          '<div class="dest-strip" id="eDestStrip"><div class="dests" id="eDests"></div></div></div>' +
           '<div class="amount-wrap"><div class="amount-display empty num" id="eAmountDisplay"><span class="yen">¥</span>0</div>' +
           '<button class="clear-btn" id="eClearBtn" type="button">クリア</button></div>' +
-          '<div class="seg"><button type="button" id="eSegExpense">支出</button><button type="button" id="eSegCharge">チャージ</button></div>' +
-          '<div class="dest-row" id="eDestRow"><div class="sec-label">チャージ先</div><div class="dests" id="eDests"></div></div>' +
-          '<div class="edit-keypad" id="eKeypad">' +
+          '<div class="keypad" id="eKeypad">' +
           '<button type="button" data-k="1">1</button><button type="button" data-k="2">2</button><button type="button" data-k="3">3</button>' +
           '<button type="button" data-k="4">4</button><button type="button" data-k="5">5</button><button type="button" data-k="6">6</button>' +
           '<button type="button" data-k="7">7</button><button type="button" data-k="8">8</button><button type="button" data-k="9">9</button>' +
@@ -1260,13 +1244,14 @@
             b.addEventListener("click", function () { eMethod = m.id; eRenderMethods(); eRenderDests(); eValidate(); });
             eMethodsEl.appendChild(b);
           });
+          eMethodsEl.style.gridTemplateColumns = state.methods.length === 1 ? "minmax(0, 1fr)" : state.methods.length === 2 ? "repeat(2, minmax(0, 1fr))" : "";
           scheduleNameFit(eMethodsEl);
         }
         function eRenderDests() {
           eDestsEl.innerHTML = "";
           var list = state.methods.filter(function (m) { return m.kind === "emoney" && m.id !== eMethod; });
           if (eDest && !list.some(function (m) { return m.id === eDest; })) eDest = null;
-          if (!eDest && list.length === 1) eDest = list[0].id;
+          if (!eDest && list.length) eDest = list[0].id;
           list.forEach(function (m) {
             var b = document.createElement("button");
             b.type = "button"; b.className = "dest-btn" + (m.id === eDest ? " sel" : "");
@@ -1278,14 +1263,12 @@
         }
         function eSetType(t) {
           eType = t;
-          document.getElementById("eSegExpense").className = t === "expense" ? "sel-expense" : "";
-          document.getElementById("eSegCharge").className = t === "charge" ? "sel-charge" : "";
-          document.getElementById("eDestRow").classList.toggle("open", t === "charge");
+          document.getElementById("eChargeRow").classList.toggle("off", t !== "charge");
+          document.getElementById("eChargeToggle").classList.toggle("on", t === "charge");
           if (t === "charge") eRenderDests();
           eValidate();
         }
-        document.getElementById("eSegExpense").addEventListener("click", function () { eSetType("expense"); });
-        document.getElementById("eSegCharge").addEventListener("click", function () { eSetType("charge"); });
+        document.getElementById("eChargeToggle").addEventListener("click", function () { eSetType(eType === "charge" ? "expense" : "charge"); });
         document.getElementById("eKeypad").addEventListener("click", function (e) {
           var b = e.target.closest("button"); if (!b) return;
           var k = b.getAttribute("data-k");
