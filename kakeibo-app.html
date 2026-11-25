@@ -191,7 +191,7 @@
 
       .hist-item { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 11px 13px; margin-bottom: 7px; box-shadow: var(--shadow); }
       .hist-main { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-      .hist-main .left { min-width: 0; }
+      .hist-main .left { flex: 1; min-width: 0; }
       .hist-main .what { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .hist-main .when { font-size: 11.5px; color: var(--ink-2); margin-top: 1px; }
       .hist-main .amt { font-size: 16px; font-weight: 800; white-space: nowrap; }
@@ -308,7 +308,8 @@
       .icon-btn.eye { background: var(--surface-2); color: var(--ink-2); }
       .hist-main .left { min-width: 0; }
       .method-note { font-size: 13px; color: var(--ink-2); font-weight: 600; }
-      .frame-sel { display: block; width: 100%; max-width: 230px; margin-top: 5px; font-size: 13px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); box-sizing: border-box; }
+      .badge.fixed { background: var(--surface-2); color: var(--ink-2); }
+      .frame-sel { display: block; width: 180px; max-width: 100%; margin-top: 5px; font-size: 13px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); box-sizing: border-box; }
       .bg-frame { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
       .bg-frame input { border: 1.5px solid var(--line); border-radius: 10px; padding: 9px 10px; font-size: 14.5px; background: var(--surface); color: var(--ink); box-sizing: border-box; }
       .bg-frame .bg-name { flex: 1; min-width: 0; }
@@ -1324,7 +1325,7 @@
           html += '<div class="card"><div class="flow-head">' + fmtDate(c.start) + 'の給料分' + (c.projected ? ' <span class="badge charge">予定</span>' : '') + '</div>';
           if (c.salary > 0) html += '<div class="kv-row"><span class="k">給料</span><span class="v num">' + fmtSignedYen(c.salary) + '</span></div>';
           if (c.withdraw > 0) html += '<div class="kv-row"><span class="k">貯蓄からの引落</span><span class="v num">' + fmtSignedYen(c.withdraw) + '</span></div>';
-          if (c.immediate > 0) html += '<div class="kv-row"><span class="k">支出・固定費（即時払い）</span><span class="v num">' + fmtSignedYen(-c.immediate) + '</span></div>';
+          if (c.immediate > 0) html += '<div class="kv-row"><span class="k">支出・固定費（即時払い）</span><span class="v num neg">' + fmtSignedYen(-c.immediate) + '</span></div>';
           if (c.credit > 0) html += '<div class="kv-row"><span class="k">クレジット引き落とし</span><span class="v num credit">' + fmtSignedYen(-c.credit) + '</span></div>';
           html += '<div class="kv-row flow-total"><span class="k" style="font-weight:800">合計</span><span class="v num' + (c.net < 0 ? " neg" : "") + '">' + fmtSignedYen(c.net) + '</span></div></div>';
         }
@@ -1351,6 +1352,23 @@
         var items = [];
         state.records.forEach(function (r) { items.push({ kind: "rec", date: r.date, ts: r.ts || 0, rec: r }); });
         state.salaries.forEach(function (s) { items.push({ kind: "sal", date: s.date, ts: s.ts || 0, sal: s }); });
+        // 固定費は記録を作らず、発生日（請求日）に表示専用で並べる。範囲はデータのある期間（長くても直近12か月）〜今日まで
+        (function () {
+          var today = todayStr(), earliest = null;
+          items.forEach(function (it) { if (!earliest || it.date < earliest) earliest = it.date; });
+          var capD = parseDate(today); capD.setMonth(capD.getMonth() - 11); capD.setDate(1);
+          var rangeStart = !earliest || earliest < toStr(capD) ? toStr(capD) : earliest;
+          state.fixedCosts.forEach(function (f) {
+            var startMonth = (f.since || rangeStart).slice(0, 7);
+            var y = +startMonth.slice(0, 4), mo = +startMonth.slice(5, 7) - 1;
+            var endD = parseDate(today);
+            while (y < endD.getFullYear() || (y === endD.getFullYear() && mo <= endD.getMonth())) {
+              var dstr = toStr(new Date(y, mo, Math.min(f.billDay, lastDay(y, mo))));
+              if (dstr >= rangeStart && dstr <= today) items.push({ kind: "fixed", date: dstr, ts: 0, fixed: f });
+              mo++; if (mo > 11) { mo = 0; y++; }
+            }
+          });
+        })();
         items.sort(function (a, b) { if (a.date !== b.date) return a.date < b.date ? 1 : -1; return b.ts - a.ts; });
         if (!items.length) { body.innerHTML = '<div class="empty-note">まだ記録がありません。<br>入力画面から最初の1件を記録してみてください。</div>'; return; }
         var html = "", lastDate = "";
@@ -1358,7 +1376,15 @@
         if (curPc.budget && curPc.unsorted > 0) html += '<div class="unsorted-banner">今期の未仕分け ' + curPc.unsorted + '件</div>';
         items.forEach(function (it) {
           if (it.date !== lastDate) { html += '<div class="date-head">' + fmtDate(it.date) + '</div>'; lastDate = it.date; }
-          if (it.kind === "sal") {
+          if (it.kind === "fixed") {
+            var f = it.fixed, fm = methodById(f.methodId);
+            var fsub = esc(fm ? fm.name : "（削除済みの方法）");
+            if (fm && fm.kind === "card") fsub += ' ／ ' + fmtDate(billingPayDate(it.date, fm)) + '引き落とし';
+            html += '<div class="hist-item fixed-item"><div class="hist-main"><div class="left">' +
+              '<div class="what">' + esc(f.name || "固定費") + ' <span class="badge fixed">固定費</span></div>' +
+              '<div class="when">' + fsub + '</div></div>' +
+              '<div class="amt num">−' + fmtYen(+f.amount || 0) + '</div></div></div>';
+          } else if (it.kind === "sal") {
             html += '<div class="hist-item" data-sal="' + it.sal.id + '"><div class="hist-main"><div class="left">' +
               '<div class="what">給料 <span class="badge salary">収入</span></div>' +
               '<div class="when">うち貯金分 ' + fmtYen(+it.sal.savings || 0) + '</div>' + noteHtml(it.sal) + '</div>' +
@@ -1394,6 +1420,7 @@
         });
         body.innerHTML = html;
         body.querySelectorAll(".hist-item").forEach(function (el) {
+          if (!el.querySelector("[data-act]")) return;
           el.addEventListener("click", function (e) {
             if (e.target.closest("button, select")) return;
             var was = el.classList.contains("open");
@@ -1841,7 +1868,7 @@
         var amount = parseInt(document.getElementById("fxAmount").value, 10);
         if (!name) { toast("固定費の名前を入れてね"); return; }
         if (!amount || amount <= 0) { toast("金額を入れてね"); return; }
-        state.fixedCosts.push({ id: uid(), name: name, methodId: document.getElementById("fxMethod").value, amount: amount, billDay: +document.getElementById("fxDay").value });
+        state.fixedCosts.push({ id: uid(), name: name, methodId: document.getElementById("fxMethod").value, amount: amount, billDay: +document.getElementById("fxDay").value, since: todayStr().slice(0, 7) });
         save(); document.getElementById("fxName").value = ""; document.getElementById("fxAmount").value = "";
         fillSettings(); toast("固定費を追加した");
       });
