@@ -235,7 +235,13 @@
       .edit-save-row .ok { background: var(--accent); color: var(--accent-ink); }
       .edit-save-row .ok:disabled { opacity: .35; }
       .date-head { font-size: 12px; font-weight: 700; color: var(--ink-2); margin: 14px 2px 7px; }
-      .date-head:first-child { margin-top: 0; }
+      .day-group:first-child .date-head { margin-top: 0; }
+      button.date-head { display: flex; align-items: center; justify-content: space-between; width: calc(100% - 4px); background: none; border: 0; padding: 0; font: inherit; font-size: 12px; font-weight: 700; color: var(--ink-2); text-align: left; cursor: pointer; box-sizing: border-box; }
+      .tgl-chev { display: inline-block; color: var(--ink-2); font-size: 11px; transition: transform .15s; }
+      .tgl-chev.open { transform: rotate(180deg); }
+      .flow-toggle { display: flex; align-items: center; gap: 8px; width: 100%; background: none; border: 0; padding: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; box-sizing: border-box; }
+      .flow-toggle .flow-head { flex: 1; min-width: 0; margin-bottom: 0; }
+      .flow-toggle .v { font-size: 15px; font-weight: 800; white-space: nowrap; }
 
       .bill-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
       .bill-head .card-name { font-size: 15.5px; font-weight: 800; }
@@ -1232,6 +1238,7 @@
       var EYE_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>';
       var EYE_OFF_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c6.5 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19"/><path d="M6.61 6.61A13.5 13.5 0 0 0 2 12s3.5 8 10 8a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/></svg>';
       var savOpen = false;
+      var openCycles = {}, closedDays = {};
       function savingsTileHtml() {
         var bal = savingsTotal(), goal = state.savingsGoal;
         var h = '<div class="card sav-card"><div class="sav-head">' +
@@ -1322,15 +1329,26 @@
         // ---- サイクルごとの内訳（新しい順） ----
         for (var i = disp.length - 1; i >= 0; i--) {
           var c = disp[i];
-          html += '<div class="card"><div class="flow-head">' + fmtDate(c.start) + 'の給料分' + (c.projected ? ' <span class="badge charge">予定</span>' : '') + '</div>';
+          var cOpen = !!openCycles[c.start];
+          html += '<div class="card"><button type="button" class="flow-toggle" data-cycle="' + c.start + '" aria-expanded="' + cOpen + '"><span class="flow-head">' + fmtDate(c.start) + 'の給料分' + (c.projected ? ' <span class="badge charge">予定</span>' : '') + '</span>' + (cOpen ? '' : '<span class="v num' + (c.net < 0 ? " neg" : "") + '">' + fmtSignedYen(c.net) + '</span>') + '<span class="tgl-chev' + (cOpen ? " open" : "") + '">▾</span></button>';
+          if (cOpen) {
           if (c.salary > 0) html += '<div class="kv-row"><span class="k">給料</span><span class="v num">' + fmtSignedYen(c.salary) + '</span></div>';
           if (c.withdraw > 0) html += '<div class="kv-row"><span class="k">貯蓄からの引落</span><span class="v num">' + fmtSignedYen(c.withdraw) + '</span></div>';
           if (c.immediate > 0) html += '<div class="kv-row"><span class="k">支出・固定費（即時払い）</span><span class="v num neg">' + fmtSignedYen(-c.immediate) + '</span></div>';
           if (c.credit > 0) html += '<div class="kv-row"><span class="k">クレジット引き落とし</span><span class="v num credit">' + fmtSignedYen(-c.credit) + '</span></div>';
-          html += '<div class="kv-row flow-total"><span class="k" style="font-weight:800">合計</span><span class="v num' + (c.net < 0 ? " neg" : "") + '">' + fmtSignedYen(c.net) + '</span></div></div>';
+          html += '<div class="kv-row flow-total"><span class="k" style="font-weight:800">合計</span><span class="v num' + (c.net < 0 ? " neg" : "") + '">' + fmtSignedYen(c.net) + '</span></div>';
+          }
+          html += '</div>';
         }
         body.innerHTML = html;
         wireSavingsTile();
+        body.querySelectorAll(".flow-toggle").forEach(function (b) {
+          b.addEventListener("click", function () {
+            var k = b.getAttribute("data-cycle");
+            if (openCycles[k]) delete openCycles[k]; else openCycles[k] = true;
+            renderBalance();
+          });
+        });
       }
 
       /* ================= history screen ================= */
@@ -1371,11 +1389,18 @@
         })();
         items.sort(function (a, b) { if (a.date !== b.date) return a.date < b.date ? 1 : -1; return b.ts - a.ts; });
         if (!items.length) { body.innerHTML = '<div class="empty-note">まだ記録がありません。<br>入力画面から最初の1件を記録してみてください。</div>'; return; }
-        var html = "", lastDate = "";
+        var html = "", lastDate = "", curClosed = false;
         var curPc = periodCalc(currentPeriodStart());
         if (curPc.budget && curPc.unsorted > 0) html += '<div class="unsorted-banner">今期の未仕分け ' + curPc.unsorted + '件</div>';
         items.forEach(function (it) {
-          if (it.date !== lastDate) { html += '<div class="date-head">' + fmtDate(it.date) + '</div>'; lastDate = it.date; }
+          if (it.date !== lastDate) {
+            if (lastDate) { if (!curClosed) html += '</div>'; html += '</div>'; }
+            curClosed = !!closedDays[it.date];
+            html += '<div class="day-group"><button type="button" class="date-head day-toggle" data-day="' + it.date + '" aria-expanded="' + (!curClosed) + '">' + fmtDate(it.date) + '<span class="tgl-chev' + (curClosed ? "" : " open") + '">▾</span></button>';
+            if (!curClosed) html += '<div class="day-items">';
+            lastDate = it.date;
+          }
+          if (curClosed) return;
           if (it.kind === "fixed") {
             var f = it.fixed, fm = methodById(f.methodId);
             var fsub = esc(fm ? fm.name : "（削除済みの方法）");
@@ -1418,7 +1443,15 @@
             }
           }
         });
+        if (lastDate) { if (!curClosed) html += '</div>'; html += '</div>'; }
         body.innerHTML = html;
+        body.querySelectorAll(".day-toggle").forEach(function (b) {
+          b.addEventListener("click", function () {
+            var d = b.getAttribute("data-day");
+            if (closedDays[d]) delete closedDays[d]; else closedDays[d] = true;
+            renderHistory();
+          });
+        });
         body.querySelectorAll(".hist-item").forEach(function (el) {
           if (!el.querySelector("[data-act]")) return;
           el.addEventListener("click", function (e) {
