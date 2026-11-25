@@ -237,7 +237,8 @@
       .date-head { font-size: 12px; font-weight: 700; color: var(--ink-2); margin: 14px 2px 7px; }
       .day-group:first-child .date-head { margin-top: 0; }
       button.date-head { display: flex; align-items: center; justify-content: flex-start; gap: 6px; width: calc(100% - 4px); background: none; border: 0; padding: 0; font: inherit; font-size: 12px; font-weight: 700; color: var(--ink-2); text-align: left; cursor: pointer; box-sizing: border-box; }
-      .tgl-chev { display: inline-block; color: var(--ink-2); font-size: 17px; line-height: 1; transition: transform .15s; }
+      .tgl-chev { display: inline-flex; align-items: center; flex: none; color: var(--ink-2); transition: transform .15s; }
+      .tgl-chev svg { width: 1em; height: 1em; display: block; }
       .tgl-chev.open { transform: rotate(90deg); }
       .flow-toggle { display: flex; align-items: center; gap: 8px; width: 100%; background: none; border: 0; padding: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; box-sizing: border-box; }
       .flow-toggle .flow-head { flex: 1; min-width: 0; margin-bottom: 0; }
@@ -1330,7 +1331,7 @@
         for (var i = disp.length - 1; i >= 0; i--) {
           var c = disp[i];
           var cOpen = !!openCycles[c.start];
-          html += '<div class="card"><button type="button" class="flow-toggle" data-cycle="' + c.start + '" aria-expanded="' + cOpen + '"><span class="tgl-chev' + (cOpen ? " open" : "") + '">▸</span><span class="flow-head">' + fmtDate(c.start) + 'の給料分' + (c.projected ? ' <span class="badge charge">予定</span>' : '') + '</span>' + (cOpen ? '' : '<span class="v num' + (c.net < 0 ? " neg" : "") + '">' + fmtSignedYen(c.net) + '</span>') + '</button>';
+          html += '<div class="card"><button type="button" class="flow-toggle" data-cycle="' + c.start + '" aria-expanded="' + cOpen + '"><span class="tgl-chev' + (cOpen ? " open" : "") + '"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 1 L10 6 L3 11 Z" fill="currentColor"/></svg></span><span class="flow-head">' + fmtDate(c.start) + 'の給料分' + (c.projected ? ' <span class="badge charge">予定</span>' : '') + '</span>' + (cOpen ? '' : '<span class="v num' + (c.net < 0 ? " neg" : "") + '">' + fmtSignedYen(c.net) + '</span>') + '</button>';
           if (cOpen) {
           if (c.salary > 0) html += '<div class="kv-row"><span class="k">給料</span><span class="v num">' + fmtSignedYen(c.salary) + '</span></div>';
           if (c.withdraw > 0) html += '<div class="kv-row"><span class="k">貯蓄からの引落</span><span class="v num">' + fmtSignedYen(c.withdraw) + '</span></div>';
@@ -1396,7 +1397,7 @@
           if (it.date !== lastDate) {
             if (lastDate) { if (!curClosed) html += '</div>'; html += '</div>'; }
             curClosed = !!closedDays[it.date];
-            html += '<div class="day-group"><button type="button" class="date-head day-toggle" data-day="' + it.date + '" aria-expanded="' + (!curClosed) + '"><span class="tgl-chev' + (curClosed ? "" : " open") + '">▸</span>' + fmtDate(it.date) + '</button>';
+            html += '<div class="day-group"><button type="button" class="date-head day-toggle" data-day="' + it.date + '" aria-expanded="' + (!curClosed) + '"><span class="tgl-chev' + (curClosed ? "" : " open") + '"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 1 L10 6 L3 11 Z" fill="currentColor"/></svg></span>' + fmtDate(it.date) + '</button>';
             if (!curClosed) html += '<div class="day-items">';
             lastDate = it.date;
           }
