@@ -294,6 +294,38 @@
       details.fold[open ] summary::before { content: "▾ "; }
       .danger-btn { width: 100%; border: 0; border-radius: 10px; background: var(--danger-soft); color: var(--danger); font-size: 14px; font-weight: 800; padding: 11px 0; margin-top: 4px; }
 
+      /* ---------- v2: 予算・貯蓄 ---------- */
+      .btn-status { font-size: 12px; color: var(--ink-2); text-align: right; }
+      .ratio-row { display: flex; align-items: center; gap: 10px; margin-top: 9px; }
+      .ratio-bar { flex: 1; min-width: 0; height: 8px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+      .ratio-bar i { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+      .ratio-txt { font-size: 12.5px; font-weight: 800; white-space: nowrap; }
+      .unsorted-line { margin-top: 6px; font-size: 12.5px; font-weight: 800; color: #a86e0a; }
+      .unsorted-banner { background: #fdf3e0; border: 1px solid #ecd9ac; color: #7a5203; font-size: 12.5px; font-weight: 800; border-radius: 10px; padding: 8px 12px; margin-bottom: 10px; }
+      .card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px; }
+      .card-title { font-size: 13px; font-weight: 800; color: var(--ink-2); }
+      .icon-btn.edit.on { outline: 2px solid var(--accent); outline-offset: 1px; }
+      .icon-btn.eye { background: var(--surface-2); color: var(--ink-2); }
+      .hist-main .left { min-width: 0; }
+      .method-note { font-size: 13px; color: var(--ink-2); font-weight: 600; }
+      .frame-sel { display: block; width: 100%; max-width: 230px; margin-top: 5px; font-size: 13px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); box-sizing: border-box; }
+      .bg-frame { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+      .bg-frame input { border: 1.5px solid var(--line); border-radius: 10px; padding: 9px 10px; font-size: 14.5px; background: var(--surface); color: var(--ink); box-sizing: border-box; }
+      .bg-frame .bg-name { flex: 1; min-width: 0; }
+      .bg-frame .bg-amt { width: 108px; flex-shrink: 0; text-align: right; }
+      .bg-sub { font-size: 11.5px; color: var(--ink-2); margin: -3px 0 8px 2px; }
+      .bg-free { border-top: 1.5px solid var(--line); margin-top: 10px; padding-top: 10px; }
+      .sav-head { display: flex; align-items: center; gap: 8px; }
+      .sav-toggle { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 10px; background: none; border: 0; padding: 4px 0; color: var(--ink); }
+      .sav-label { font-size: 13px; font-weight: 800; color: var(--ink-2); }
+      .sav-amt { font-size: 24px; font-weight: 900; white-space: nowrap; }
+      .goal-wrap { margin-top: 8px; }
+      .goal-bar { height: 8px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+      .goal-bar i { display: block; height: 100%; background: var(--accent); }
+      .goal-txt { font-size: 12px; color: var(--ink-2); margin-top: 5px; font-weight: 700; }
+      .sav-body { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 12px; }
+      .sav-sec { font-size: 13px; font-weight: 800; margin: 14px 0 8px; }
+
       /* ---------- modal / toast ---------- */
       .overlay { position: fixed; inset: 0; background: rgba(10, 12, 10, .45); display: none; align-items: flex-end; justify-content: center; z-index: 50; }
       .overlay.open { display: flex; }
@@ -324,17 +356,17 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
           入力
         </button>
-        <button type="button" data-view="money">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
-          お金
+        <button type="button" data-view="history">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
+          履歴
         </button>
         <button type="button" data-view="balance">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15v3"/><path d="M12 9v9"/><path d="M17 5v13"/></svg>
           収支
         </button>
-        <button type="button" data-view="history">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
-          履歴
+        <button type="button" data-view="money">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
+          お金
         </button>
         <button type="button" data-view="settings">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34h0a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55h0a1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87v0a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1Z"/></svg>
@@ -376,10 +408,10 @@
           <button class="record-btn" id="recordBtn" type="button" disabled>記録する</button>
         </section>
 
-        <!-- ======== お金 ======== -->
-        <section class="view" id="view-money">
-          <div id="moneyBody"></div>
-          <button class="primary-btn" id="salaryBtn" type="button">給料を登録する</button>
+        <!-- ======== 履歴 ======== -->
+        <section class="view" id="view-history">
+          <div class="view-title">履歴</div>
+          <div id="historyBody"></div>
         </section>
 
         <!-- ======== 収支 ======== -->
@@ -388,10 +420,9 @@
           <div id="balanceBody"></div>
         </section>
 
-        <!-- ======== 履歴 ======== -->
-        <section class="view" id="view-history">
-          <div class="view-title">履歴</div>
-          <div id="historyBody"></div>
+        <!-- ======== お金 ======== -->
+        <section class="view" id="view-money">
+          <div id="moneyBody"></div>
         </section>
 
         <!-- ======== 設定 ======== -->
@@ -484,7 +515,10 @@
           fixedCosts: [],  // {id, name, methodId, amount, billDay}
           salaries: [],    // {id, ts, date, amount, savings}
           baseSavings: 0,
-          paydayDay: null  // 給料日（サイクルの区切り）。未設定なら月の初めで区切る
+          paydayDay: null, // 給料日（サイクルの区切り）。未設定なら月の初めで区切る
+          budgets: [],     // {payday:'YYYY-MM-DD', frames:[{id, name, amount}]} 給料日ごとの予算編成
+          savingsGoal: null, // 貯蓄の目標額（未登録なら null）
+          hideSavings: false // 貯蓄額を伏せるかどうか
         };
       }
       var state;
@@ -510,6 +544,9 @@
         if (!Array.isArray(state.salaries)) { state.salaries = []; changed = true; }
         if (typeof state.baseSavings !== "number") { state.baseSavings = +state.baseSavings || 0; changed = true; }
         if (state.paydayDay === undefined) { state.paydayDay = derivePaydayDay(); changed = true; }
+        if (!Array.isArray(state.budgets)) { state.budgets = []; changed = true; }
+        if (state.savingsGoal === undefined) { state.savingsGoal = null; changed = true; }
+        if (typeof state.hideSavings !== "boolean") { state.hideSavings = false; changed = true; }
         if (changed) save();
       }
       migrateState();
@@ -572,6 +609,7 @@
         var bal = 0;
         state.records.forEach(function (r) {
           if (r.type === "charge" && r.toId === methodId) bal += r.amount;
+          else if (r.type === "withdraw" && r.methodId === methodId) bal += r.amount;
           else if (r.type === "expense" && r.methodId === methodId) bal -= r.amount;
           else if (r.type === "adjust" && r.methodId === methodId) bal += r.amount;
         });
@@ -582,6 +620,7 @@
         var bal = 0;
         state.records.forEach(function (r) {
           if (r.type === "adjust" && r.methodId === methodId) bal += r.amount;
+          else if (r.type === "withdraw" && r.methodId === methodId) bal += r.amount;
           else if (r.type === "expense" && r.methodId === methodId) bal -= r.amount;
           else if (r.type === "charge" && r.methodId === methodId) bal -= r.amount;
         });
@@ -594,7 +633,11 @@
         return sum;
       }
       function fixedTotal() { return state.fixedCosts.reduce(function (s, f) { return s + (+f.amount || 0); }, 0); }
-      function savingsTotal() { return state.salaries.reduce(function (s, x) { return s + (+x.savings || 0); }, 0) + savingsAdjustTotal(); }
+      function savingsTotal() {
+        var wd = 0;
+        state.records.forEach(function (r) { if (r.type === "withdraw") wd += r.amount; });
+        return state.salaries.reduce(function (s, x) { return s + (+x.savings || 0); }, 0) + savingsAdjustTotal() - wd;
+      }
       function currentCycle() {
         var t = todayStr(), past = state.salaries.filter(function (s) { return s.date <= t; })
           .sort(function (a, b) { return a.date < b.date ? -1 : 1; });
@@ -609,6 +652,74 @@
         });
         return { salary: cur, start: cur.date, end: end, used: used, fixed: fixedTotal(),
                  free: cur.amount - fixedTotal() - (+cur.savings || 0) - used };
+      }
+      /* ================= 期間（給与サイクル）と予算・自由なお金の計算 =================
+         期間の区切りは給料日ルール（paydayOf）で決める。給料の登録日が多少ずれても、
+         予算と実績は同じ期間キー（期間の開始日＝給料日）で対応づける */
+      function periodStartOf(dateStr) {
+        var d = parseDate(dateStr);
+        var p = paydayOf(d.getFullYear(), d.getMonth());
+        if (toStr(p) > dateStr) p = paydayOf(d.getFullYear(), d.getMonth() - 1);
+        return toStr(p);
+      }
+      function currentPeriodStart() { return periodStartOf(todayStr()); }
+      function salaryForPeriod(start) {
+        var list = state.salaries.filter(function (s) { return periodStartOf(s.date) === start; })
+          .sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : (a.ts || 0) - (b.ts || 0); });
+        return list.length ? list[list.length - 1] : null;
+      }
+      function budgetFor(start) {
+        for (var i = 0; i < state.budgets.length; i++) if (state.budgets[i].payday === start) return state.budgets[i];
+        return null;
+      }
+      function withdrawalsIn(start, end) {
+        var sum = 0;
+        state.records.forEach(function (r) { if (r.type === "withdraw" && r.date >= start && r.date < end) sum += r.amount; });
+        return sum;
+      }
+      // 1期間分の「自由なお金」まわりをまとめて計算する。
+      // 予算がある期間：自由なお金＝（給料＋引落）−固定費−貯金分−枠合計−自由費の消費
+      //   自由費の消費＝枠なし支出＋「自由費」リンク支出＋枠を超えた分。消費割合の母数は予定していた自由なお金
+      // 予算がない期間：従来通り、使用済み全部が自由なお金を減らす（フォールバック）
+      function periodCalc(start) {
+        var end = nextPaydayAfter(start);
+        var sal = salaryForPeriod(start);
+        var salaryAmt = sal ? +sal.amount || 0 : 0;
+        var savPortion = sal ? +sal.savings || 0 : (state.baseSavings || 0);
+        var wd = withdrawalsIn(start, end);
+        var base = salaryAmt + wd;
+        var fixed = fixedTotal();
+        var budget = budgetFor(start);
+        var framesTotal = 0, frameMap = {};
+        if (budget) budget.frames.forEach(function (f) { framesTotal += +f.amount || 0; frameMap[f.id] = f; });
+        var frameUsed = {}, freeUsed = 0, usedTotal = 0, unsorted = 0;
+        state.records.forEach(function (r) {
+          if (r.type !== "expense" || r.date < start || r.date >= end) return;
+          usedTotal += r.amount;
+          if (!budget) { freeUsed += r.amount; return; }
+          var f = r.frameId ? frameMap[r.frameId] : null;
+          if (f) {
+            var before = frameUsed[f.id] || 0;
+            var within = Math.min(r.amount, Math.max((+f.amount || 0) - before, 0));
+            frameUsed[f.id] = before + within;
+            freeUsed += r.amount - within;
+          } else if (r.frameId === "free") {
+            freeUsed += r.amount;
+          } else {
+            freeUsed += r.amount; unsorted++;
+          }
+        });
+        var plannedFree = base - fixed - savPortion - framesTotal;
+        var denom = budget ? plannedFree : base - fixed - savPortion;
+        return {
+          start: start, end: end, sal: sal, salaryAmt: salaryAmt,
+          savPortion: savPortion, savProvisional: !sal, wd: wd, base: base,
+          fixed: fixed, budget: budget, framesTotal: framesTotal,
+          frameUsed: frameUsed, freeUsed: freeUsed, usedTotal: usedTotal,
+          unsorted: unsorted, plannedFree: plannedFree, denom: denom,
+          free: denom - freeUsed,
+          ratio: denom > 0 ? freeUsed / denom : null
+        };
       }
       function monthExpenseTotal() {
         var t = todayStr().slice(0, 7), sum = 0;
@@ -805,40 +916,52 @@
 
       /* ================= money screen ================= */
       function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+      var balEditMode = false;
       function renderMoney() {
-        var body = document.getElementById("moneyBody"), html = "", cyc = currentCycle();
-        if (cyc) {
-          html += '<div class="card hero"><div class="h-label">あと自由に使える額</div>' +
-            '<div class="h-amount num' + (cyc.free < 0 ? " neg" : "") + '">' + fmtYen(cyc.free) + '</div>' +
-            '<div class="h-break num">給料 ' + fmtYen(cyc.salary.amount) + ' − 固定費 ' + fmtYen(cyc.fixed) + ' − 貯金 ' + fmtYen(+cyc.salary.savings || 0) + ' − 使用済み ' + fmtYen(cyc.used) + '</div>' +
-            '<div class="h-cycle">' + fmtDate(cyc.start) + ' の給料分 ／ 次回給料日目安 ' + fmtDate(cyc.end) + '</div></div>';
+        var body = document.getElementById("moneyBody"), html = "";
+        var pc = periodCalc(currentPeriodStart());
+        // ---- 登録ボタンと直近分の登録状況 ----
+        html += '<button class="primary-btn" id="salaryBtn" type="button" style="margin-bottom:4px">給料を登録する</button>';
+        html += '<div class="btn-status">' + fmtDate(pc.start) + 'の給料：' + (pc.sal ? '登録済み（' + fmtYen(pc.salaryAmt) + '）' : '未登録') + '</div>';
+        html += '<button class="ghost-btn" id="budgetBtn" type="button" style="margin:10px 0 4px">予算を編成する</button>';
+        html += '<div class="btn-status" style="margin-bottom:12px">この期間の予算：' + (pc.budget ? '編成済み（枠' + pc.budget.frames.length + '件）' : '未編成') + '</div>';
+        // ---- 自由なお金 ----
+        if (pc.sal) {
+          html += '<div class="card hero"><div class="h-label">自由なお金</div>' +
+            '<div class="h-amount num' + (pc.free < 0 ? " neg" : "") + '">' + fmtYen(pc.free) + '</div>';
+          var brk = '給料 ' + fmtYen(pc.salaryAmt);
+          if (pc.wd > 0) brk += ' ＋ 引落 ' + fmtYen(pc.wd);
+          brk += ' − 固定費 ' + fmtYen(pc.fixed) + ' − 貯金 ' + fmtYen(pc.savPortion);
+          if (pc.budget) brk += ' − 予算枠 ' + fmtYen(pc.framesTotal) + ' − 自由費の消費 ' + fmtYen(pc.freeUsed);
+          else brk += ' − 使用済み ' + fmtYen(pc.usedTotal);
+          html += '<div class="h-break num">' + brk + '</div>';
+          if (pc.ratio !== null) {
+            var pct = Math.round(pc.ratio * 100);
+            html += '<div class="ratio-row"><div class="ratio-bar"><i style="width:' + Math.min(100, Math.max(0, pct)) + '%"></i></div><div class="ratio-txt num">消費割合 ' + pct + '%</div></div>';
+          }
+          if (pc.budget && pc.unsorted > 0) html += '<div class="unsorted-line">未仕分け ' + pc.unsorted + '件</div>';
+          html += '<div class="h-cycle">' + fmtDate(pc.start) + ' の給料分 ／ 次回給料日目安 ' + fmtDate(pc.end) + '</div></div>';
         } else {
-          html += '<div class="card hero"><div class="h-label">あと自由に使える額</div>' +
+          html += '<div class="card hero"><div class="h-label">自由なお金</div>' +
             '<div class="h-amount num">―</div>' +
-            '<div class="h-break">給料を登録すると、固定費・貯金・使用済みを差し引いた残りが表示されます。</div></div>';
+            '<div class="h-break">給料を登録すると、固定費・貯金・予算枠を差し引いた残りが表示されます。</div></div>';
         }
-        html += '<div class="card">';
-        html += '<div class="kv-row"><span class="k">今月使った額</span><span class="v num">' + fmtYen(monthExpenseTotal()) + '</span></div>';
-        var savBal = savingsTotal();
-        html += '<div class="kv-row"><span class="k">貯金残高</span>' +
-          '<span style="display:flex;align-items:center;gap:8px"><span class="v num' + (savBal < 0 ? " neg" : "") + '">' + fmtYen(savBal) + '</span>' +
-          '<button type="button" class="mini-btn" data-adjust="savings">残高を合わせる</button></span></div>';
-        state.methods.filter(function (m) { return m.kind === "cash"; }).forEach(function (m) {
-          var cbal = cashBalance(m.id);
-          html += '<div class="kv-row"><span class="k">' + esc(m.name) + ' 残高</span>' +
-            '<span style="display:flex;align-items:center;gap:8px"><span class="v num' + (cbal < 0 ? " neg" : "") + '">' + fmtYen(cbal) + '</span>' +
-            '<button type="button" class="mini-btn" data-adjust="' + m.id + '">残高を合わせる</button></span></div>';
-        });
-        state.methods.filter(function (m) { return m.kind === "emoney"; }).forEach(function (m) {
-          var bal = emoneyBalance(m.id);
-          html += '<div class="kv-row"><span class="k">' + esc(m.name) + ' 残高</span>' +
+        // ---- 今月使った額 ----
+        html += '<div class="card"><div class="kv-row"><span class="k">今月使った額</span><span class="v num">' + fmtYen(monthExpenseTotal()) + '</span></div></div>';
+        // ---- 残高（合わせる操作は編集ボタンのトグルでまとめて出す） ----
+        function balRow(name, bal, key) {
+          return '<div class="kv-row"><span class="k">' + name + '</span>' +
             '<span style="display:flex;align-items:center;gap:8px"><span class="v num' + (bal < 0 ? " neg" : "") + '">' + fmtYen(bal) + '</span>' +
-            '<button type="button" class="mini-btn" data-adjust="' + m.id + '">残高を合わせる</button></span></div>';
-        });
+            (balEditMode ? '<button type="button" class="icon-btn edit" data-adjust="' + key + '" aria-label="残高を合わせる">' + EDIT_SVG + '</button>' : '') + '</span></div>';
+        }
+        html += '<div class="card"><div class="card-head"><span class="card-title">残高</span>' +
+          '<button type="button" class="icon-btn edit' + (balEditMode ? " on" : "") + '" id="balEditToggle" aria-label="残高を合わせる">' + EDIT_SVG + '</button></div>';
+        state.methods.filter(function (m) { return m.kind === "cash"; }).forEach(function (m) { html += balRow(esc(m.name) + ' 残高', cashBalance(m.id), m.id); });
+        state.methods.filter(function (m) { return m.kind === "emoney"; }).forEach(function (m) { html += balRow(esc(m.name) + ' 残高', emoneyBalance(m.id), m.id); });
         html += '</div>';
-        // カードごとの次回引き落とし
+        // ---- カードごとの引き落とし（グループタイトル付き） ----
         var cards = state.methods.filter(function (m) { return m.kind === "card"; });
-        var anyBill = false, billHtml = '<div class="card">';
+        var anyBill = false, billHtml = '<div class="card"><div class="card-title" style="margin-bottom:4px">クレジットカード引き落とし</div>';
         cards.forEach(function (m) {
           var g = billGroups(m.id);
           if (!g.length || g[0].total === 0) return;
@@ -848,6 +971,9 @@
         billHtml += '</div>';
         if (anyBill) html += billHtml;
         body.innerHTML = html;
+        document.getElementById("salaryBtn").addEventListener("click", openSalarySheet);
+        document.getElementById("budgetBtn").addEventListener("click", function () { openBudgetSheet(currentPeriodStart()); });
+        document.getElementById("balEditToggle").addEventListener("click", function () { balEditMode = !balEditMode; renderMoney(); });
         body.querySelectorAll("[data-adjust]").forEach(function (b) {
           b.addEventListener("click", function () { openAdjust(b.getAttribute("data-adjust")); });
         });
@@ -877,7 +1003,7 @@
           closeSheet(); renderAll(); toast(t.name + " の残高を " + fmtYen(v) + " に合わせた");
         });
       }
-      document.getElementById("salaryBtn").addEventListener("click", function () {
+      function openSalarySheet() {
         openSheet('<h3>給料を登録</h3>' +
           '<div class="fld"><label for="salDate">給料日</label><input type="date" id="salDate" value="' + todayStr() + '" /></div>' +
           '<div class="fld"><label for="salAmount">金額</label><input type="number" id="salAmount" inputmode="numeric" min="0" placeholder="0" /></div>' +
@@ -894,7 +1020,107 @@
           save(); closeSheet(); renderAll(); switchView("money");
           toast("給料 " + fmtYen(a) + " を登録した");
         });
-      });
+      }
+
+      /* ================= 予算編成 ================= */
+      function budgetPaydayOptions(sel) {
+        var set = {};
+        state.salaries.forEach(function (s) { set[periodStartOf(s.date)] = true; });
+        state.budgets.forEach(function (b) { set[b.payday] = true; });
+        var cur = currentPeriodStart();
+        set[cur] = true;
+        set[nextPaydayAfter(cur)] = true;
+        var prevD = parseDate(cur); prevD.setDate(prevD.getDate() - 5);
+        set[periodStartOf(toStr(prevD))] = true;
+        return Object.keys(set).sort().reverse().map(function (d) {
+          return '<option value="' + d + '"' + (d === sel ? " selected" : "") + ">" + fmtDate(d) + "</option>";
+        }).join("");
+      }
+      function openBudgetSheet(start) {
+        openSheet('<h3>予算を編成</h3>' +
+          '<div class="fld"><label for="bgPayday">対象の給料日</label><select id="bgPayday">' + budgetPaydayOptions(start) + '</select></div>' +
+          '<div id="bgBody"></div>' +
+          '<div class="row-btns"><button type="button" class="cancel" id="bgCancel">キャンセル</button><button type="button" class="ok" id="bgSave">保存する</button></div>');
+        var selEl = document.getElementById("bgPayday");
+        var curStart = start, workFrames = [], origIds = [];
+        function loadPeriod(p) {
+          curStart = p;
+          var b = budgetFor(p);
+          if (b) {
+            workFrames = b.frames.map(function (f) { return { id: f.id, name: f.name, amount: +f.amount || 0 }; });
+            origIds = b.frames.map(function (f) { return f.id; });
+          } else {
+            // 未編成なら、直近の過去の編成をコピーして下書きにする（枠だけ先に埋めることもできる）
+            var prev = null;
+            state.budgets.forEach(function (x) { if (x.payday < p && (!prev || x.payday > prev.payday)) prev = x; });
+            workFrames = prev ? prev.frames.map(function (f) { return { id: uid(), name: f.name, amount: +f.amount || 0 }; }) : [];
+            origIds = [];
+          }
+          renderBgBody();
+        }
+        function bgFree() {
+          var pc = periodCalc(curStart);
+          var tot = workFrames.reduce(function (s, f) { return s + (+f.amount || 0); }, 0);
+          return pc.base - pc.fixed - pc.savPortion - tot;
+        }
+        function renderBgBody() {
+          var pc = periodCalc(curStart);
+          var h = '<div class="card" style="box-shadow:none;margin-bottom:10px">';
+          h += '<div class="kv-row"><span class="k">給与</span><span class="v num">' + (pc.sal ? fmtYen(pc.salaryAmt) : "未登録") + '</span></div>';
+          if (pc.wd > 0) h += '<div class="kv-row"><span class="k">貯蓄からの引落</span><span class="v num">+' + fmtYen(pc.wd) + '</span></div>';
+          h += '<div class="kv-row"><span class="k">固定費</span><span class="v num">−' + fmtYen(pc.fixed) + '</span></div>';
+          h += '<div class="kv-row"><span class="k">貯金分' + (pc.savProvisional ? '（仮）' : '') + '</span><span class="v num">−' + fmtYen(pc.savPortion) + '</span></div>';
+          h += '</div><div id="bgFrames">';
+          workFrames.forEach(function (f, i) {
+            h += '<div class="bg-frame"><input type="text" class="bg-name" data-i="' + i + '" maxlength="6" placeholder="枠の名前（6文字まで）" value="' + esc(f.name) + '">' +
+              '<input type="number" class="bg-amt num" data-i="' + i + '" inputmode="numeric" min="0" placeholder="金額" value="' + (f.amount ? f.amount : "") + '">' +
+              '<button type="button" class="icon-btn del bg-del" data-i="' + i + '" aria-label="枠を削除">' + TRASH_SVG + '</button></div>';
+            if (pc.budget && pc.sal) {
+              var used = pc.frameUsed[f.id] || 0;
+              h += '<div class="bg-sub num">' + esc(f.name) + '：使った額 ' + fmtYen(used) + ' ／ 残り ' + fmtYen((+f.amount || 0) - used) + '</div>';
+            }
+          });
+          h += '</div>';
+          h += '<button type="button" class="ghost-btn" id="bgAdd">枠を追加</button>';
+          h += '<div class="kv-row bg-free"><span class="k" style="font-weight:800">自由費</span><span class="v num" id="bgFreeVal">' + (pc.sal ? fmtYen(bgFree()) : '給料登録後に確定') + '</span></div>';
+          document.getElementById("bgBody").innerHTML = h;
+          wireBg();
+        }
+        function syncFromInputs() {
+          document.querySelectorAll(".bg-name").forEach(function (inp) { var f = workFrames[+inp.getAttribute("data-i")]; if (f) f.name = inp.value; });
+          document.querySelectorAll(".bg-amt").forEach(function (inp) { var f = workFrames[+inp.getAttribute("data-i")]; if (f) f.amount = parseInt(inp.value, 10) || 0; });
+          var fv = document.getElementById("bgFreeVal");
+          if (fv && periodCalc(curStart).sal) fv.textContent = fmtYen(bgFree());
+        }
+        function wireBg() {
+          document.querySelectorAll(".bg-name, .bg-amt").forEach(function (inp) { inp.addEventListener("input", syncFromInputs); });
+          document.querySelectorAll(".bg-del").forEach(function (b) {
+            b.addEventListener("click", function () { syncFromInputs(); workFrames.splice(+b.getAttribute("data-i"), 1); renderBgBody(); });
+          });
+          document.getElementById("bgAdd").addEventListener("click", function () { syncFromInputs(); workFrames.push({ id: uid(), name: "", amount: 0 }); renderBgBody(); });
+        }
+        selEl.addEventListener("change", function () { loadPeriod(selEl.value); });
+        document.getElementById("bgCancel").addEventListener("click", closeSheet);
+        document.getElementById("bgSave").addEventListener("click", function () {
+          syncFromInputs();
+          var frames = workFrames.filter(function (f) { return f.name.trim() || (+f.amount || 0) > 0; });
+          for (var i = 0; i < frames.length; i++) if (!frames[i].name.trim()) { toast("枠の名前を入れてね"); return; }
+          frames.forEach(function (f) { f.name = f.name.trim().slice(0, 6); f.amount = +f.amount || 0; });
+          // 消した枠に付いていたリンクは未設定に戻す
+          var removed = origIds.filter(function (id) { return !frames.some(function (f) { return f.id === id; }); });
+          if (removed.length) state.records.forEach(function (r) {
+            if (r.frameId && removed.indexOf(r.frameId) >= 0 && periodStartOf(r.date) === curStart) delete r.frameId;
+          });
+          var idx = -1;
+          state.budgets.forEach(function (b, i) { if (b.payday === curStart) idx = i; });
+          if (frames.length) { var entry = { payday: curStart, frames: frames }; if (idx >= 0) state.budgets[idx] = entry; else state.budgets.push(entry); }
+          else if (idx >= 0) state.budgets.splice(idx, 1);
+          state.budgets.sort(function (a, b) { return a.payday < b.payday ? -1 : 1; });
+          save(); closeSheet(); renderAll(); switchView("money");
+          toast(frames.length ? "予算を保存した" : "予算を削除した");
+        });
+        loadPeriod(start);
+      }
 
       /* ================= balance screen ================= */
       function ruleText(m) { return (m.closeDay >= 31 ? "末締め" : m.closeDay + "日締め") + "・翌月" + m.payDay + "日払い"; }
@@ -920,6 +1146,7 @@
           var m = methodById(r.methodId);
           if (r.type === "expense") marks.push(m && m.kind === "card" ? billingPayDate(r.date, m) : r.date);
           else if (r.type === "charge" && m && m.kind === "card") marks.push(billingPayDate(r.date, m));
+          else if (r.type === "withdraw") marks.push(r.date);
         });
         marks.sort();
         var minD = marks[0], maxD = marks[marks.length - 1];
@@ -942,7 +1169,7 @@
           return {
             start: b,
             end: i + 1 < bounds.length ? bounds[i + 1] : lastEnd,
-            salary: salByDate[b] || 0, immediate: 0, credit: 0, projected: false
+            salary: salByDate[b] || 0, immediate: 0, credit: 0, withdraw: 0, projected: false
           };
         });
         function find(d) {
@@ -957,6 +1184,9 @@
           } else if (r.type === "charge") {
             // カードからのチャージは引き落とし日に計上。現金/iDからのチャージは振替なので計上しない
             if (m && m.kind === "card") { c = find(billingPayDate(r.date, m)); if (c) c.credit += r.amount; }
+          } else if (r.type === "withdraw") {
+            // 貯蓄からの引落は収入として記録日に計上する
+            c = find(r.date); if (c) c.withdraw += r.amount;
           }
           // adjust（残高調整）は現金の出入りではないので計上しない
         });
@@ -984,12 +1214,12 @@
           }
         });
         cycles.forEach(function (c) {
-          c.net = c.salary - c.immediate - c.credit;
+          c.net = c.salary + c.withdraw - c.immediate - c.credit;
           // まだ始まっていない給料未登録のサイクルは「予定」（未来の引き落とし用）
           c.projected = c.salary === 0 && c.start > t;
         });
         // 中身のないサイクル（給料・即時払い・クレジット引き落としのいずれも0）は表示しない
-        return cycles.filter(function (c) { return c.salary > 0 || c.immediate > 0 || c.credit > 0; });
+        return cycles.filter(function (c) { return c.salary > 0 || c.immediate > 0 || c.credit > 0 || c.withdraw > 0; });
       }
       function fmtSignedYen(n) { return n === 0 ? "¥0" : (n < 0 ? "−" : "+") + fmtYen(Math.abs(n)); }
       function fmtBarVal(v) {
@@ -998,11 +1228,65 @@
         if (a >= 10000) return sign + (Math.round(a / 1000) / 10) + "万";
         return sign + "¥" + a.toLocaleString("ja-JP");
       }
+      var EYE_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>';
+      var EYE_OFF_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c6.5 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19"/><path d="M6.61 6.61A13.5 13.5 0 0 0 2 12s3.5 8 10 8a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/></svg>';
+      var savOpen = false;
+      function savingsTileHtml() {
+        var bal = savingsTotal(), goal = state.savingsGoal;
+        var h = '<div class="card sav-card"><div class="sav-head">' +
+          '<button type="button" class="sav-toggle" id="savToggle"><span class="sav-label">貯蓄</span>' +
+          '<span class="sav-amt num' + (bal < 0 ? " neg" : "") + '">' + (state.hideSavings ? "¥･･･" : fmtYen(bal)) + '</span></button>' +
+          '<button type="button" class="icon-btn eye" id="savEye" aria-label="貯蓄額の表示・非表示">' + (state.hideSavings ? EYE_OFF_SVG : EYE_SVG) + '</button></div>';
+        if (goal && goal > 0) {
+          var pct = Math.max(0, Math.floor(bal / goal * 100));
+          h += '<div class="goal-wrap"><div class="goal-bar"><i style="width:' + Math.min(100, pct) + '%"></i></div>' +
+            '<div class="goal-txt num">目標 ' + fmtYen(goal) + ' ／ 達成割合 ' + pct + '%</div></div>';
+        }
+        if (savOpen) {
+          var dests = state.methods.filter(function (m) { return m.kind === "cash" || m.kind === "emoney"; });
+          h += '<div class="sav-body">' +
+            '<div class="fld"><label for="savGoal">目標額</label><input type="number" id="savGoal" inputmode="numeric" min="0" placeholder="0" value="' + (goal || "") + '" /></div>' +
+            '<button type="button" class="ghost-btn" id="savGoalSave">目標を保存する</button>' +
+            '<div class="sav-sec">貯蓄からの引落</div>' +
+            '<div class="fld-row"><div class="fld"><label for="wdAmount">金額</label><input type="number" id="wdAmount" inputmode="numeric" min="0" placeholder="0" /></div>' +
+            '<div class="fld"><label for="wdDest">引落先</label><select id="wdDest">' +
+            dests.map(function (m) { return '<option value="' + m.id + '">' + esc(m.name) + '</option>'; }).join("") + '</select></div></div>' +
+            '<button type="button" class="primary-btn" id="wdBtn">引き落とす</button>' +
+            '<button type="button" class="ghost-btn" id="savAdjustBtn" style="margin-bottom:0">貯蓄の残高を合わせる</button>' +
+            '</div>';
+        }
+        return h + '</div>';
+      }
+      function wireSavingsTile() {
+        var tgl = document.getElementById("savToggle");
+        if (tgl) tgl.addEventListener("click", function () { savOpen = !savOpen; renderBalance(); });
+        var eye = document.getElementById("savEye");
+        if (eye) eye.addEventListener("click", function () { state.hideSavings = !state.hideSavings; save(); renderBalance(); });
+        if (!savOpen) return;
+        document.getElementById("savGoalSave").addEventListener("click", function () {
+          var v = parseInt(document.getElementById("savGoal").value, 10);
+          state.savingsGoal = isNaN(v) || v <= 0 ? null : v;
+          save(); renderBalance(); toast(state.savingsGoal ? "目標額を保存した" : "目標額を消した");
+        });
+        document.getElementById("wdBtn").addEventListener("click", function () {
+          var v = parseInt(document.getElementById("wdAmount").value, 10);
+          var dest = methodById(document.getElementById("wdDest").value);
+          if (!v || v <= 0) { toast("引落額を入れてね"); return; }
+          if (!dest) { toast("引落先を選んでね"); return; }
+          if (v > savingsTotal()) { toast("貯蓄残高が足りないよ"); return; }
+          state.records.push({ id: uid(), ts: Date.now(), date: todayStr(), type: "withdraw", methodId: dest.id, methodName: dest.name, amount: v });
+          save(); renderAll(); switchView("balance");
+          toast("貯蓄から " + dest.name + " へ " + fmtYen(v) + " を引き落とした");
+        });
+        document.getElementById("savAdjustBtn").addEventListener("click", function () { openAdjust("savings"); });
+      }
       function renderBalance() {
         var body = document.getElementById("balanceBody");
+        var tile = savingsTileHtml();
         var cycles = cycleFlows();
         if (!cycles.length) {
-          body.innerHTML = '<div class="empty-note">支出やクレジットの記録が増えると、給料日ごとの収支がここに表示されます。</div>';
+          body.innerHTML = tile + '<div class="empty-note">支出やクレジットの記録が増えると、給料日ごとの収支がここに表示されます。</div>';
+          wireSavingsTile();
           return;
         }
         var disp = cycles.slice(-8);
@@ -1033,17 +1317,19 @@
           if (c.projected) svg += '<text class="xlab proj" x="' + cx + '" y="' + (H - 4) + '">予定</text>';
         });
         svg += '</svg>';
-        var html = '<div class="card" style="padding:10px 8px 4px">' + svg + '</div>';
+        var html = tile + '<div class="card" style="padding:10px 8px 4px">' + svg + '</div>';
         // ---- サイクルごとの内訳（新しい順） ----
         for (var i = disp.length - 1; i >= 0; i--) {
           var c = disp[i];
           html += '<div class="card"><div class="flow-head">' + fmtDate(c.start) + 'の給料分' + (c.projected ? ' <span class="badge charge">予定</span>' : '') + '</div>';
           if (c.salary > 0) html += '<div class="kv-row"><span class="k">給料</span><span class="v num">' + fmtSignedYen(c.salary) + '</span></div>';
+          if (c.withdraw > 0) html += '<div class="kv-row"><span class="k">貯蓄からの引落</span><span class="v num">' + fmtSignedYen(c.withdraw) + '</span></div>';
           if (c.immediate > 0) html += '<div class="kv-row"><span class="k">支出・固定費（即時払い）</span><span class="v num">' + fmtSignedYen(-c.immediate) + '</span></div>';
           if (c.credit > 0) html += '<div class="kv-row"><span class="k">クレジット引き落とし</span><span class="v num credit">' + fmtSignedYen(-c.credit) + '</span></div>';
           html += '<div class="kv-row flow-total"><span class="k" style="font-weight:800">合計</span><span class="v num' + (c.net < 0 ? " neg" : "") + '">' + fmtSignedYen(c.net) + '</span></div></div>';
         }
         body.innerHTML = html;
+        wireSavingsTile();
       }
 
       /* ================= history screen ================= */
@@ -1068,6 +1354,8 @@
         items.sort(function (a, b) { if (a.date !== b.date) return a.date < b.date ? 1 : -1; return b.ts - a.ts; });
         if (!items.length) { body.innerHTML = '<div class="empty-note">まだ記録がありません。<br>入力画面から最初の1件を記録してみてください。</div>'; return; }
         var html = "", lastDate = "";
+        var curPc = periodCalc(currentPeriodStart());
+        if (curPc.budget && curPc.unsorted > 0) html += '<div class="unsorted-banner">今期の未仕分け ' + curPc.unsorted + '件</div>';
         items.forEach(function (it) {
           if (it.date !== lastDate) { html += '<div class="date-head">' + fmtDate(it.date) + '</div>'; lastDate = it.date; }
           if (it.kind === "sal") {
@@ -1077,23 +1365,48 @@
               '<div class="amt num" style="color:var(--accent)">+' + fmtYen(it.sal.amount) + '</div></div>' +
               histActionsHtml("sal", it.sal.id) + '</div>';
           } else {
-            var r = it.rec, what, badge, amt;
-            if (r.type === "expense") { what = esc(r.methodName); badge = '<span class="badge expense">支出</span>'; amt = "−" + fmtYen(r.amount); }
-            else if (r.type === "charge") { what = esc(r.methodName) + " → " + esc(r.toName || ""); badge = '<span class="badge charge">チャージ</span>'; amt = fmtYen(r.amount); }
-            else { what = esc(r.methodName) + " 残高調整"; badge = '<span class="badge adjust">調整</span>'; amt = (r.amount >= 0 ? "+" : "−") + fmtYen(Math.abs(r.amount)); }
-            html += '<div class="hist-item" data-rec="' + r.id + '"><div class="hist-main"><div class="left">' +
-              '<div class="what">' + what + ' ' + badge + '</div>' + noteHtml(r) + '</div>' +
-              '<div class="amt num">' + amt + '</div></div>' +
-              histActionsHtml("rec", r.id) + '</div>';
+            var r = it.rec;
+            if (r.type === "expense") {
+              var bgt = budgetFor(periodStartOf(r.date));
+              var opts = '<option value="">未設定</option>';
+              if (bgt) bgt.frames.forEach(function (f) { opts += '<option value="' + f.id + '"' + (r.frameId === f.id ? " selected" : "") + ">" + esc(f.name) + "</option>"; });
+              opts += '<option value="free"' + (r.frameId === "free" ? " selected" : "") + ">自由費</option>";
+              html += '<div class="hist-item" data-rec="' + r.id + '"><div class="hist-main"><div class="left">' +
+                '<div class="what"><span class="method-note">' + esc(r.methodName) + '</span> <span class="badge expense">支出</span></div>' +
+                '<select class="frame-sel" data-frame-for="' + r.id + '" aria-label="予算枠">' + opts + '</select>' + noteHtml(r) + '</div>' +
+                '<div class="amt num">−' + fmtYen(r.amount) + '</div></div>' +
+                histActionsHtml("rec", r.id) + '</div>';
+            } else if (r.type === "withdraw") {
+              html += '<div class="hist-item" data-rec="' + r.id + '"><div class="hist-main"><div class="left">' +
+                '<div class="what">貯蓄 → ' + esc(r.methodName) + ' <span class="badge salary">引落</span></div>' + noteHtml(r) + '</div>' +
+                '<div class="amt num" style="color:var(--accent)">+' + fmtYen(r.amount) + '</div></div>' +
+                histActionsHtml("rec", r.id) + '</div>';
+            } else {
+              var what, badge, amt;
+              if (r.type === "charge") { what = esc(r.methodName) + " → " + esc(r.toName || ""); badge = '<span class="badge charge">チャージ</span>'; amt = fmtYen(r.amount); }
+              else { what = esc(r.methodName) + " 残高調整"; badge = '<span class="badge adjust">調整</span>'; amt = (r.amount >= 0 ? "+" : "−") + fmtYen(Math.abs(r.amount)); }
+              html += '<div class="hist-item" data-rec="' + r.id + '"><div class="hist-main"><div class="left">' +
+                '<div class="what">' + what + ' ' + badge + '</div>' + noteHtml(r) + '</div>' +
+                '<div class="amt num">' + amt + '</div></div>' +
+                histActionsHtml("rec", r.id) + '</div>';
+            }
           }
         });
         body.innerHTML = html;
         body.querySelectorAll(".hist-item").forEach(function (el) {
           el.addEventListener("click", function (e) {
-            if (e.target.closest("button")) return;
+            if (e.target.closest("button, select")) return;
             var was = el.classList.contains("open");
             body.querySelectorAll(".hist-item.open").forEach(function (o) { o.classList.remove("open"); });
             if (!was) el.classList.add("open");
+          });
+        });
+        body.querySelectorAll(".frame-sel").forEach(function (sel) {
+          sel.addEventListener("click", function (e) { e.stopPropagation(); });
+          sel.addEventListener("change", function () {
+            var rec = findRec(sel.getAttribute("data-frame-for")); if (!rec) return;
+            if (sel.value) rec.frameId = sel.value; else delete rec.frameId;
+            save(); renderAll();
           });
         });
         body.querySelectorAll("[data-act]").forEach(function (b) {
@@ -1123,6 +1436,10 @@
           row("支払い方法", esc(obj.methodName));
           row("チャージ先", esc(obj.toName || ""));
           row("金額", fmtYen(obj.amount));
+        } else if (obj.type === "withdraw") {
+          row("種別", "貯蓄からの引落");
+          row("引落先", esc(obj.methodName));
+          row("金額", "+" + fmtYen(obj.amount));
         } else {
           row("種別", "残高調整");
           row("対象", esc(obj.methodName));
@@ -1176,6 +1493,7 @@
         var obj = histTarget(kind, id); if (!obj) return;
         if (kind === "sal") openEditSalary(obj);
         else if (obj.type === "adjust") openEditAdjust(obj);
+        else if (obj.type === "withdraw") openEditWithdraw(obj);
         else openEditRecord(obj);
       }
       function openEditSalary(sal) {
@@ -1216,6 +1534,30 @@
           rec.amount = v;
           save(); closeSheet(); renderAll(); switchView("history");
           toast("残高調整を修正した");
+        });
+      }
+      function openEditWithdraw(rec) {
+        openSheet('<h3>引落を修正</h3>' +
+          '<div class="fld"><label for="eWdDate">日付</label><input type="date" id="eWdDate" /></div>' +
+          '<div class="fld"><label for="eWdDest">引落先</label><select id="eWdDest"></select></div>' +
+          '<div class="fld"><label for="eWdAmount">金額</label><input type="number" id="eWdAmount" inputmode="numeric" min="0" /></div>' +
+          '<div class="row-btns"><button type="button" class="cancel" id="eWdCancel">キャンセル</button><button type="button" class="ok" id="eWdOk">保存する</button></div>');
+        document.getElementById("eWdDate").value = rec.date;
+        var dSel = document.getElementById("eWdDest");
+        dSel.innerHTML = state.methods.filter(function (m) { return m.kind === "cash" || m.kind === "emoney"; })
+          .map(function (m) { return '<option value="' + m.id + '">' + esc(m.name) + '</option>'; }).join("");
+        if (methodById(rec.methodId)) dSel.value = rec.methodId;
+        document.getElementById("eWdAmount").value = rec.amount;
+        document.getElementById("eWdCancel").addEventListener("click", closeSheet);
+        document.getElementById("eWdOk").addEventListener("click", function () {
+          var v = parseInt(document.getElementById("eWdAmount").value, 10);
+          var dest = methodById(dSel.value);
+          if (!v || v <= 0) { toast("金額を入れてね"); return; }
+          if (!dest) { toast("引落先を選んでね"); return; }
+          rec.date = document.getElementById("eWdDate").value || rec.date;
+          rec.amount = v; rec.methodId = dest.id; rec.methodName = dest.name;
+          save(); closeSheet(); renderAll(); switchView("history");
+          toast("引落を修正した");
         });
       }
       function openEditRecord(rec) {
@@ -1526,6 +1868,9 @@
         if (!Array.isArray(state.salaries)) state.salaries = [];
         if (typeof state.baseSavings !== "number") state.baseSavings = +state.baseSavings || 0;
         if (state.paydayDay === undefined) state.paydayDay = derivePaydayDay();
+        if (!Array.isArray(state.budgets)) state.budgets = [];
+        if (state.savingsGoal === undefined) state.savingsGoal = null;
+        if (typeof state.hideSavings !== "boolean") state.hideSavings = false;
         migrateCashLabel();
         save();
         if (!methodById(selMethod)) selMethod = state.methods.length ? state.methods[0].id : null;
@@ -1630,7 +1975,7 @@
       });
 
       /* ================= navigation ================= */
-      var TAB_ORDER = ["input", "money", "balance", "history", "settings"];
+      var TAB_ORDER = ["input", "history", "balance", "money", "settings"];
       var track = document.getElementById("track");
       function switchView(name) {
         document.querySelectorAll(".view").forEach(function (v) { v.classList.remove("active"); });
