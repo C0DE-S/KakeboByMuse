@@ -177,6 +177,9 @@
       .kv-row .k .sub { font-size: 11px; color: var(--ink-2); font-weight: 400; }
       .kv-row .v { font-size: 16px; font-weight: 800; white-space: nowrap; }
       .kv-row .v.neg { color: var(--danger); }
+      .kv-row .v.pos { color: var(--accent); }
+      .v.neg, .sav-amt.neg { color: var(--danger); }
+      .v.pos { color: var(--accent); }
       .mini-btn { background: var(--surface-2); border: 0; border-radius: 999px; font-size: 11.5px; font-weight: 700; color: var(--ink-2); padding: 6px 11px; flex-shrink: 0; }
       .primary-btn { display: block; width: 100%; border: 0; border-radius: 12px; background: var(--accent); color: var(--accent-ink); font-size: 15px; font-weight: 800; padding: 13px 0; margin-bottom: 10px; }
       .ghost-btn { display: block; width: 100%; border: 1.5px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); font-size: 14px; font-weight: 700; padding: 12px 0; margin-bottom: 10px; }
@@ -195,6 +198,8 @@
       .hist-main .what { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .hist-main .when { font-size: 11.5px; color: var(--ink-2); margin-top: 1px; }
       .hist-main .amt { font-size: 16px; font-weight: 800; white-space: nowrap; }
+      .hist-main .amt.neg { color: var(--danger); }
+      .hist-main .amt.pos { color: var(--accent); }
       .hist-note { font-size: 12px; color: var(--ink-2); margin-top: 3px; overflow-wrap: anywhere; }
       .hist-note .note-label { font-weight: 700; }
       .hist-actions { display: none; margin-top: 10px; gap: 6px; }
@@ -263,6 +268,7 @@
       .chart-svg .ylab { font-size: 9.5px; fill: var(--ink-2); text-anchor: end; }
       .chart-svg .bval { font-size: 10.5px; font-weight: 800; fill: var(--ink); text-anchor: middle; font-variant-numeric: tabular-nums; }
       .chart-svg .bval.neg { fill: var(--danger); }
+      .chart-svg .bval.pos { fill: var(--accent); }
       .chart-svg .xlab { font-size: 10px; fill: var(--ink-2); text-anchor: middle; }
       .chart-svg .xlab.proj { fill: var(--charge); font-weight: 700; }
       .flow-head { font-size: 14.5px; font-weight: 800; margin-bottom: 2px; }
@@ -321,7 +327,9 @@
       .bg-frame input { border: 1.5px solid var(--line); border-radius: 10px; padding: 9px 10px; font-size: 14.5px; background: var(--surface); color: var(--ink); box-sizing: border-box; }
       .bg-frame .bg-name { flex: 1; min-width: 0; }
       .bg-frame .bg-amt { width: 108px; flex-shrink: 0; text-align: right; }
-      .bg-sub { font-size: 11.5px; color: var(--ink-2); margin: -3px 0 8px 2px; }
+      .bg-card { border: 1px solid var(--line); border-radius: 12px; padding: 10px; margin-bottom: 8px; }
+      .bg-card .bg-frame { margin-bottom: 0; }
+      .bg-used { font-size: 12px; color: var(--ink-2); margin-top: 7px; }
       .bg-free { border-top: 1.5px solid var(--line); margin-top: 10px; padding-top: 10px; }
       .sav-head { display: flex; align-items: center; gap: 8px; }
       .sav-toggle { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 10px; background: none; border: 0; padding: 4px 0; color: var(--ink); }
@@ -1050,7 +1058,7 @@
           '<div id="bgBody"></div>' +
           '<div class="row-btns"><button type="button" class="cancel" id="bgCancel">キャンセル</button><button type="button" class="ok" id="bgSave">保存する</button></div>');
         var selEl = document.getElementById("bgPayday");
-        var curStart = start, workFrames = [], origIds = [];
+        var curStart = start, workFrames = [], origIds = [], bgUsed = [];
         function loadPeriod(p) {
           curStart = p;
           var b = budgetFor(p);
@@ -1075,18 +1083,21 @@
           var pc = periodCalc(curStart);
           var h = '<div class="card" style="box-shadow:none;margin-bottom:10px">';
           h += '<div class="kv-row"><span class="k">給与</span><span class="v num">' + (pc.sal ? fmtYen(pc.salaryAmt) : "未登録") + '</span></div>';
-          if (pc.wd > 0) h += '<div class="kv-row"><span class="k">貯蓄からの引落</span><span class="v num">+' + fmtYen(pc.wd) + '</span></div>';
-          h += '<div class="kv-row"><span class="k">固定費</span><span class="v num">−' + fmtYen(pc.fixed) + '</span></div>';
-          h += '<div class="kv-row"><span class="k">貯金分' + (pc.savProvisional ? '（仮）' : '') + '</span><span class="v num">−' + fmtYen(pc.savPortion) + '</span></div>';
+          if (pc.wd > 0) h += '<div class="kv-row"><span class="k">貯蓄からの引落</span><span class="v num pos">+' + fmtYen(pc.wd) + '</span></div>';
+          h += '<div class="kv-row"><span class="k">固定費</span><span class="v num neg">−' + fmtYen(pc.fixed) + '</span></div>';
+          h += '<div class="kv-row"><span class="k">貯金分' + (pc.savProvisional ? '（仮）' : '') + '</span><span class="v num neg">−' + fmtYen(pc.savPortion) + '</span></div>';
           h += '</div><div id="bgFrames">';
+          bgUsed = [];
           workFrames.forEach(function (f, i) {
-            h += '<div class="bg-frame"><input type="text" class="bg-name" data-i="' + i + '" maxlength="6" placeholder="枠の名前（6文字まで）" value="' + esc(f.name) + '">' +
+            h += '<div class="bg-card"><div class="bg-frame"><input type="text" class="bg-name" data-i="' + i + '" maxlength="6" placeholder="枠の名前（6文字まで）" value="' + esc(f.name) + '">' +
               '<input type="number" class="bg-amt num" data-i="' + i + '" inputmode="numeric" min="0" placeholder="金額" value="' + (f.amount ? f.amount : "") + '">' +
               '<button type="button" class="icon-btn del bg-del" data-i="' + i + '" aria-label="枠を削除">' + TRASH_SVG + '</button></div>';
             if (pc.budget && pc.sal) {
               var used = pc.frameUsed[f.id] || 0;
-              h += '<div class="bg-sub num">' + esc(f.name) + '：使った額 ' + fmtYen(used) + ' ／ 残り ' + fmtYen((+f.amount || 0) - used) + '</div>';
+              bgUsed[i] = used;
+              h += '<div class="bg-used num" data-i="' + i + '">使用済み：' + fmtYen(used) + '/' + fmtYen(+f.amount || 0) + '</div>';
             }
+            h += '</div>';
           });
           h += '</div>';
           h += '<button type="button" class="ghost-btn" id="bgAdd">枠を追加</button>';
@@ -1099,6 +1110,10 @@
           document.querySelectorAll(".bg-amt").forEach(function (inp) { var f = workFrames[+inp.getAttribute("data-i")]; if (f) f.amount = parseInt(inp.value, 10) || 0; });
           var fv = document.getElementById("bgFreeVal");
           if (fv && periodCalc(curStart).sal) fv.textContent = fmtYen(bgFree());
+          document.querySelectorAll(".bg-used").forEach(function (el) {
+            var i = +el.getAttribute("data-i");
+            el.textContent = '使用済み：' + fmtYen(bgUsed[i] || 0) + '/' + fmtYen(workFrames[i] ? (+workFrames[i].amount || 0) : 0);
+          });
         }
         function wireBg() {
           document.querySelectorAll(".bg-name, .bg-amt").forEach(function (inp) { inp.addEventListener("input", syncFromInputs); });
@@ -1320,7 +1335,7 @@
           var h = Math.max(y2 - y1, net === 0 ? 0 : 2);
           svg += '<rect x="' + (cx - bw / 2) + '" y="' + y1 + '" width="' + bw + '" height="' + h + '" rx="3" fill="' + (net < 0 ? "var(--danger)" : "var(--accent)") + '"/>';
           var vy = net >= 0 ? y1 - 6 : y2 + 14;
-          svg += '<text class="bval' + (net < 0 ? " neg" : "") + '" x="' + cx + '" y="' + vy + '">' + fmtBarVal(net) + '</text>';
+          svg += '<text class="bval' + (net > 0 ? " pos" : net < 0 ? " neg" : "") + '" x="' + cx + '" y="' + vy + '">' + fmtBarVal(net) + '</text>';
           var d = parseDate(c.start);
           svg += '<text class="xlab' + (c.projected ? " proj" : "") + '" x="' + cx + '" y="' + (H - 16) + '">' + (d.getMonth() + 1) + "/" + d.getDate() + '</text>';
           if (c.projected) svg += '<text class="xlab proj" x="' + cx + '" y="' + (H - 4) + '">予定</text>';
@@ -1331,13 +1346,13 @@
         for (var i = disp.length - 1; i >= 0; i--) {
           var c = disp[i];
           var cOpen = !!openCycles[c.start];
-          html += '<div class="card"><button type="button" class="flow-toggle" data-cycle="' + c.start + '" aria-expanded="' + cOpen + '"><span class="tgl-chev' + (cOpen ? " open" : "") + '"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 1 L10 6 L3 11 Z" fill="currentColor"/></svg></span><span class="flow-head">' + fmtDate(c.start) + 'の給料分' + (c.projected ? ' <span class="badge charge">予定</span>' : '') + '</span>' + (cOpen ? '' : '<span class="v num' + (c.net < 0 ? " neg" : "") + '">' + fmtSignedYen(c.net) + '</span>') + '</button>';
+          html += '<div class="card"><button type="button" class="flow-toggle" data-cycle="' + c.start + '" aria-expanded="' + cOpen + '"><span class="tgl-chev' + (cOpen ? " open" : "") + '"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 1 L10 6 L3 11 Z" fill="currentColor"/></svg></span><span class="flow-head">' + fmtDate(c.start) + 'の給料分' + (c.projected ? ' <span class="badge charge">予定</span>' : '') + '</span>' + (cOpen ? '' : '<span class="v num' + (c.net > 0 ? " pos" : c.net < 0 ? " neg" : "") + '">' + fmtSignedYen(c.net) + '</span>') + '</button>';
           if (cOpen) {
-          if (c.salary > 0) html += '<div class="kv-row"><span class="k">給料</span><span class="v num">' + fmtSignedYen(c.salary) + '</span></div>';
-          if (c.withdraw > 0) html += '<div class="kv-row"><span class="k">貯蓄からの引落</span><span class="v num">' + fmtSignedYen(c.withdraw) + '</span></div>';
+          if (c.salary > 0) html += '<div class="kv-row"><span class="k">給料</span><span class="v num pos">' + fmtSignedYen(c.salary) + '</span></div>';
+          if (c.withdraw > 0) html += '<div class="kv-row"><span class="k">貯蓄からの引落</span><span class="v num pos">' + fmtSignedYen(c.withdraw) + '</span></div>';
           if (c.immediate > 0) html += '<div class="kv-row"><span class="k">支出・固定費（即時払い）</span><span class="v num neg">' + fmtSignedYen(-c.immediate) + '</span></div>';
           if (c.credit > 0) html += '<div class="kv-row"><span class="k">クレジット引き落とし</span><span class="v num credit">' + fmtSignedYen(-c.credit) + '</span></div>';
-          html += '<div class="kv-row flow-total"><span class="k" style="font-weight:800">合計</span><span class="v num' + (c.net < 0 ? " neg" : "") + '">' + fmtSignedYen(c.net) + '</span></div>';
+          html += '<div class="kv-row flow-total"><span class="k" style="font-weight:800">合計</span><span class="v num' + (c.net > 0 ? " pos" : c.net < 0 ? " neg" : "") + '">' + fmtSignedYen(c.net) + '</span></div>';
           }
           html += '</div>';
         }
@@ -1409,7 +1424,7 @@
             html += '<div class="hist-item fixed-item"><div class="hist-main"><div class="left">' +
               '<div class="what">' + esc(f.name || "固定費") + ' <span class="badge fixed">固定費</span></div>' +
               '<div class="when">' + fsub + '</div></div>' +
-              '<div class="amt num">−' + fmtYen(+f.amount || 0) + '</div></div></div>';
+              '<div class="amt num neg">−' + fmtYen(+f.amount || 0) + '</div></div></div>';
           } else if (it.kind === "sal") {
             html += '<div class="hist-item" data-sal="' + it.sal.id + '"><div class="hist-main"><div class="left">' +
               '<div class="what">給料 <span class="badge salary">収入</span></div>' +
@@ -1426,7 +1441,7 @@
               html += '<div class="hist-item" data-rec="' + r.id + '"><div class="hist-main"><div class="left">' +
                 '<div class="what"><span class="method-note">' + esc(r.methodName) + '</span> <span class="badge expense">支出</span></div>' +
                 '<select class="frame-sel" data-frame-for="' + r.id + '" aria-label="予算枠">' + opts + '</select>' + noteHtml(r) + '</div>' +
-                '<div class="amt num">−' + fmtYen(r.amount) + '</div></div>' +
+                '<div class="amt num neg">−' + fmtYen(r.amount) + '</div></div>' +
                 histActionsHtml("rec", r.id) + '</div>';
             } else if (r.type === "withdraw") {
               html += '<div class="hist-item" data-rec="' + r.id + '"><div class="hist-main"><div class="left">' +
@@ -1434,12 +1449,12 @@
                 '<div class="amt num" style="color:var(--accent)">+' + fmtYen(r.amount) + '</div></div>' +
                 histActionsHtml("rec", r.id) + '</div>';
             } else {
-              var what, badge, amt;
+              var what, badge, amt, amtCls = "";
               if (r.type === "charge") { what = esc(r.methodName) + " → " + esc(r.toName || ""); badge = '<span class="badge charge">チャージ</span>'; amt = fmtYen(r.amount); }
-              else { what = esc(r.methodName) + " 残高調整"; badge = '<span class="badge adjust">調整</span>'; amt = (r.amount >= 0 ? "+" : "−") + fmtYen(Math.abs(r.amount)); }
+              else { what = esc(r.methodName) + " 残高調整"; badge = '<span class="badge adjust">調整</span>'; amt = (r.amount >= 0 ? "+" : "−") + fmtYen(Math.abs(r.amount)); amtCls = r.amount > 0 ? " pos" : r.amount < 0 ? " neg" : ""; }
               html += '<div class="hist-item" data-rec="' + r.id + '"><div class="hist-main"><div class="left">' +
                 '<div class="what">' + what + ' ' + badge + '</div>' + noteHtml(r) + '</div>' +
-                '<div class="amt num">' + amt + '</div></div>' +
+                '<div class="amt num' + amtCls + '">' + amt + '</div></div>' +
                 histActionsHtml("rec", r.id) + '</div>';
             }
           }
@@ -1482,16 +1497,16 @@
       function histTarget(kind, id) { return kind === "sal" ? findSal(id) : findRec(id); }
       function detailRowsHtml(kind, obj) {
         var rows = "";
-        function row(k, v) { rows += '<div class="kv-row"><span class="k">' + k + '</span><span class="v num">' + v + '</span></div>'; }
+        function row(k, v, cls) { rows += '<div class="kv-row"><span class="k">' + k + '</span><span class="v num' + (cls || "") + '">' + v + '</span></div>'; }
         row("日付", fmtDate(obj.date));
         if (kind === "sal") {
           row("種別", "給料（収入）");
-          row("金額", "+" + fmtYen(obj.amount));
+          row("金額", "+" + fmtYen(obj.amount), " pos");
           row("うち貯金分", fmtYen(+obj.savings || 0));
         } else if (obj.type === "expense") {
           row("種別", "支出");
           row("支払い方法", esc(obj.methodName));
-          row("金額", "−" + fmtYen(obj.amount));
+          row("金額", "−" + fmtYen(obj.amount), " neg");
         } else if (obj.type === "charge") {
           row("種別", "チャージ");
           row("支払い方法", esc(obj.methodName));
@@ -1500,11 +1515,11 @@
         } else if (obj.type === "withdraw") {
           row("種別", "貯蓄からの引落");
           row("引落先", esc(obj.methodName));
-          row("金額", "+" + fmtYen(obj.amount));
+          row("金額", "+" + fmtYen(obj.amount), " pos");
         } else {
           row("種別", "残高調整");
           row("対象", esc(obj.methodName));
-          row("金額", (obj.amount >= 0 ? "+" : "−") + fmtYen(Math.abs(obj.amount)));
+          row("金額", (obj.amount >= 0 ? "+" : "−") + fmtYen(Math.abs(obj.amount)), obj.amount > 0 ? " pos" : obj.amount < 0 ? " neg" : "");
         }
         if (obj.note) rows += '<div class="kv-row"><span class="k">備考</span><span class="v" style="white-space:normal;text-align:right">' + esc(obj.note) + '</span></div>';
         return rows;
