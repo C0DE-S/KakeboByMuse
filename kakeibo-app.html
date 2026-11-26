@@ -1238,6 +1238,7 @@
           var m = methodById(r.methodId), c;
           if (r.type === "expense") {
             if (m && m.kind === "card") { c = find(billingPayDate(r.date, m)); if (c) c.credit += r.amount; }
+            else if (r.frameId === "credit") { /* クレジット枠に振り分けた支出は即時払いに入れない（予算側で引かれる分） */ }
             else { c = find(r.date); if (c) c.immediate += r.amount; }
           } else if (r.type === "charge") {
             // カードからのチャージは引き落とし日に計上。現金/iDからのチャージは振替なので計上しない
