@@ -330,6 +330,9 @@
       .bg-card { border: 1px solid var(--line); border-radius: 12px; padding: 10px; margin-bottom: 8px; }
       .bg-card .bg-frame { margin-bottom: 0; }
       .bg-used { font-size: 12px; color: var(--ink-2); margin-top: 7px; }
+      .bg-cname { flex: 1; min-width: 0; font-size: 14.5px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+      .bg-camt { font-size: 15px; font-weight: 800; white-space: nowrap; }
+      .badge.auto { background: var(--surface-2); color: var(--ink-2); }
       .bg-free { border-top: 1.5px solid var(--line); margin-top: 10px; padding-top: 10px; }
       .sav-head { display: flex; align-items: center; gap: 8px; }
       .sav-toggle { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 10px; background: none; border: 0; padding: 4px 0; color: var(--ink); }
@@ -697,6 +700,30 @@
       // 予算がある期間：自由なお金＝（給料＋引落）−固定費−貯金分−枠合計−自由費の消費
       //   自由費の消費＝枠なし支出＋「自由費」リンク支出＋枠を超えた分。消費割合の母数は予定していた自由なお金
       // 予算がない期間：従来通り、使用済み全部が自由なお金を減らす（フォールバック）
+      // その期間（給料日〜次回給料日前日）に引き落とし日が来るクレジットの合計。自動の予算枠の金額になる
+      function creditTotalFor(start) {
+        var end = nextPaydayAfter(start), total = 0;
+        state.records.forEach(function (r) {
+          if (r.type !== "expense" && r.type !== "charge") return;
+          var m = methodById(r.methodId);
+          if (!m || m.kind !== "card") return;
+          var pd = billingPayDate(r.date, m);
+          if (pd >= start && pd < end) total += r.amount;
+        });
+        state.fixedCosts.forEach(function (f) {
+          var m = methodById(f.methodId);
+          if (!m || m.kind !== "card") return;
+          var d0 = parseDate(start); d0.setDate(d0.getDate() - 40);
+          var y = d0.getFullYear(), mo = d0.getMonth(), last = parseDate(end);
+          while (new Date(y, mo, 1) <= last) {
+            var dstr = toStr(new Date(y, mo, Math.min(f.billDay, lastDay(y, mo))));
+            var pd = billingPayDate(dstr, m);
+            if (pd >= start && pd < end) total += +f.amount || 0;
+            mo++; if (mo > 11) { mo = 0; y++; }
+          }
+        });
+        return total;
+      }
       function periodCalc(start) {
         var end = nextPaydayAfter(start);
         var sal = salaryForPeriod(start);
@@ -706,8 +733,13 @@
         var base = salaryAmt + wd;
         var fixed = fixedTotal();
         var budget = budgetFor(start);
+        var creditFrame = creditTotalFor(start);
         var framesTotal = 0, frameMap = {};
-        if (budget) budget.frames.forEach(function (f) { framesTotal += +f.amount || 0; frameMap[f.id] = f; });
+        if (budget) {
+          budget.frames.forEach(function (f) { framesTotal += +f.amount || 0; frameMap[f.id] = f; });
+          framesTotal += creditFrame;
+          frameMap["credit"] = { id: "credit", name: "クレジット引き落とし", amount: creditFrame };
+        }
         var frameUsed = {}, freeUsed = 0, usedTotal = 0, unsorted = 0;
         state.records.forEach(function (r) {
           if (r.type !== "expense" || r.date < start || r.date >= end) return;
@@ -730,7 +762,7 @@
         return {
           start: start, end: end, sal: sal, salaryAmt: salaryAmt,
           savPortion: savPortion, savProvisional: !sal, wd: wd, base: base,
-          fixed: fixed, budget: budget, framesTotal: framesTotal,
+          fixed: fixed, budget: budget, framesTotal: framesTotal, creditFrame: creditFrame,
           frameUsed: frameUsed, freeUsed: freeUsed, usedTotal: usedTotal,
           unsorted: unsorted, plannedFree: plannedFree, denom: denom,
           free: denom - freeUsed,
@@ -1077,7 +1109,7 @@
         function bgFree() {
           var pc = periodCalc(curStart);
           var tot = workFrames.reduce(function (s, f) { return s + (+f.amount || 0); }, 0);
-          return pc.base - pc.fixed - pc.savPortion - tot;
+          return pc.base - pc.fixed - pc.savPortion - tot - (pc.creditFrame || 0);
         }
         function renderBgBody() {
           var pc = periodCalc(curStart);
@@ -1099,6 +1131,9 @@
             }
             h += '</div>';
           });
+          h += '<div class="bg-card credit-card"><div class="bg-frame"><span class="bg-cname">クレジット引き落とし <span class="badge auto">自動</span></span><span class="bg-camt num">' + fmtYen(pc.creditFrame || 0) + '</span></div>' +
+            (pc.sal ? '<div class="bg-used num">使用済み：' + fmtYen(pc.frameUsed["credit"] || 0) + '/' + fmtYen(pc.creditFrame || 0) + '</div>' : '') +
+            '</div>';
           h += '</div>';
           h += '<button type="button" class="ghost-btn" id="bgAdd">枠を追加</button>';
           h += '<div class="kv-row bg-free"><span class="k" style="font-weight:800">自由費</span><span class="v num" id="bgFreeVal">' + (pc.sal ? fmtYen(bgFree()) : '給料登録後に確定') + '</span></div>';
@@ -1437,6 +1472,7 @@
               var bgt = budgetFor(periodStartOf(r.date));
               var opts = '<option value="">未設定</option>';
               if (bgt) bgt.frames.forEach(function (f) { opts += '<option value="' + f.id + '"' + (r.frameId === f.id ? " selected" : "") + ">" + esc(f.name) + "</option>"; });
+              if (bgt) opts += '<option value="credit"' + (r.frameId === "credit" ? " selected" : "") + ">クレジット引き落とし</option>";
               opts += '<option value="free"' + (r.frameId === "free" ? " selected" : "") + ">自由費</option>";
               html += '<div class="hist-item" data-rec="' + r.id + '"><div class="hist-main"><div class="left">' +
                 '<div class="what"><span class="method-note">' + esc(r.methodName) + '</span> <span class="badge expense">支出</span></div>' +
