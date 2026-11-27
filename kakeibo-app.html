@@ -229,6 +229,7 @@
       .edit-form .fld { margin-bottom: 8px; }
       .edit-form .fld input { padding-top: 7px; padding-bottom: 7px; }
       .sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 0; touch-action: none; }
+      .sheet-head.auto { margin-bottom: 14px; }
       .sheet-head h3 { margin: 0; }
       .sheet-x { width: 36px; height: 36px; border: 0; border-radius: 999px; background: var(--surface-2); color: var(--ink-2); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; padding: 0; }
       .sheet-x svg { width: 17px; height: 17px; }
@@ -826,7 +827,46 @@
 
       /* ================= modal ================= */
       var overlay = document.getElementById("overlay"), sheet = document.getElementById("sheet");
-      function openSheet(html) { sheet.innerHTML = html; overlay.classList.add("open"); }
+      function openSheet(html) { sheet.innerHTML = html; overlay.classList.add("open"); setupSheetChrome(); }
+      // 全シート共通の閉じ方：見出し行に✕ボタンを付け、見出し行の下スワイプでも閉じられるようにする
+      function setupSheetChrome() {
+        var head = sheet.querySelector(".sheet-head");
+        if (!head) {
+          var h3 = sheet.querySelector("h3");
+          if (!h3 || h3.parentNode !== sheet) return;
+          head = document.createElement("div");
+          head.className = "sheet-head auto";
+          sheet.insertBefore(head, h3);
+          head.appendChild(h3);
+          var x = document.createElement("button");
+          x.type = "button"; x.className = "sheet-x"; x.setAttribute("aria-label", "閉じる");
+          x.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg>';
+          head.appendChild(x);
+        }
+        var xBtn = head.querySelector(".sheet-x");
+        if (xBtn) xBtn.addEventListener("click", closeSheet);
+        var startY = null, dy = 0;
+        head.addEventListener("pointerdown", function (e) {
+          if (e.target && e.target.closest && e.target.closest("button")) return; // ボタンのタップはドラッグ扱いしない
+          startY = e.clientY; dy = 0;
+          sheet.style.transition = "none";
+          try { head.setPointerCapture(e.pointerId); } catch (err) {}
+        });
+        head.addEventListener("pointermove", function (e) {
+          if (startY === null) return;
+          dy = Math.max(0, e.clientY - startY);
+          sheet.style.transform = "translateY(" + dy + "px)";
+        });
+        function endDrag() {
+          if (startY === null) return;
+          var shouldClose = dy > 70;
+          sheet.style.transition = ""; sheet.style.transform = "";
+          startY = null;
+          if (shouldClose) closeSheet();
+        }
+        head.addEventListener("pointerup", endDrag);
+        head.addEventListener("pointercancel", endDrag);
+      }
       function closeSheet() { overlay.classList.remove("open"); sheet.innerHTML = ""; sheet.classList.remove("sheet-fit"); sheet.style.transform = ""; sheet.style.transition = ""; }
       overlay.addEventListener("click", function (e) { if (e.target === overlay) closeSheet(); });
 
@@ -1693,7 +1733,6 @@
           '<button type="button" data-k="00" class="fn">00</button><button type="button" data-k="0">0</button><button type="button" data-k="bs" class="fn">⌫</button></div>' +
           '<div class="edit-save-row"><button type="button" class="cancel" id="eCancel">キャンセル</button><button type="button" class="ok" id="eSave">保存する</button></div></div>');
         sheet.classList.add("sheet-fit");
-        document.getElementById("eCloseX").addEventListener("click", closeSheet);
         document.getElementById("eRecDate").value = rec.date;
         var eMethodsEl = document.getElementById("eMethods"), eDestsEl = document.getElementById("eDests");
         var eAmountEl = document.getElementById("eAmountDisplay"), eSaveBtn = document.getElementById("eSave");
@@ -1755,30 +1794,6 @@
         });
         document.getElementById("eClearBtn").addEventListener("click", function () { eAmountStr = ""; eRenderAmount(); eValidate(); });
         document.getElementById("eCancel").addEventListener("click", closeSheet);
-        (function () {
-          var head = sheet.querySelector(".sheet-head");
-          if (!head) return;
-          var startY = null, dy = 0;
-          head.addEventListener("pointerdown", function (e) {
-            startY = e.clientY; dy = 0;
-            sheet.style.transition = "none";
-            try { head.setPointerCapture(e.pointerId); } catch (err) {}
-          });
-          head.addEventListener("pointermove", function (e) {
-            if (startY === null) return;
-            dy = Math.max(0, e.clientY - startY);
-            sheet.style.transform = "translateY(" + dy + "px)";
-          });
-          function endDrag() {
-            if (startY === null) return;
-            var shouldClose = dy > 70;
-            sheet.style.transition = ""; sheet.style.transform = "";
-            startY = null;
-            if (shouldClose) closeSheet();
-          }
-          head.addEventListener("pointerup", endDrag);
-          head.addEventListener("pointercancel", endDrag);
-        })();
         eSaveBtn.addEventListener("click", function () {
           var m = methodById(eMethod); if (!m) return;
           rec.date = document.getElementById("eRecDate").value || rec.date;
