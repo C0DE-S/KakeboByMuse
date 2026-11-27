@@ -217,7 +217,6 @@
       .del-detail .kv-row .k { font-size: 12.5px; color: var(--ink-2); font-weight: 700; }
       .del-detail .kv-row .v { font-size: 14.5px; white-space: normal; text-align: right; overflow-wrap: anywhere; }
       .sheet .row-btns button.danger-ok { background: var(--danger); color: #fff; }
-      .edit-save-row { display: flex; gap: 9px; margin-top: 10px; }
       /* 記録を修正シート：スクロールさせずに全要素を収めるフィットレイアウト */
       .sheet.sheet-fit { height: 96dvh; max-height: 96dvh; overflow: hidden; display: flex; flex-direction: column; transition: transform .25s ease; padding-top: 10px; }
       .edit-form { display: flex; flex-direction: column; flex: 1; min-height: 0; }
@@ -230,16 +229,27 @@
       .edit-form .fld input { padding-top: 7px; padding-bottom: 7px; }
       .sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 0; touch-action: none; }
       .sheet-head.auto { margin-bottom: 14px; }
+      .row-btns button:disabled { opacity: .35; }
+      .ghost-btn:disabled, .primary-btn:disabled { opacity: .35; }
+      .amt-field { width: 100%; border: 1.5px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); font-size: 16px; padding: 10px 11px; text-align: right; box-sizing: border-box; cursor: pointer; }
+      .amt-field.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+      .amt-field.empty { color: var(--ink-2); }
+      .amt-tools { display: flex; justify-content: flex-end; margin-top: 2px; }
+      .amt-tools .clear-btn { margin-bottom: 0; }
+      .sign-row { display: flex; gap: 6px; margin-bottom: 11px; }
+      .sign-btn { flex: 1; background: var(--surface); border: 1.5px solid var(--line); border-radius: 999px; padding: 8px 0; font-size: 13.5px; font-weight: 700; color: var(--ink); font-family: inherit; }
+      .sign-btn.sel { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+      .hist-item:active { background: var(--surface-2); }
+      .sheet.sheet-fit > .sheet-head { flex: none; }
+      .bg-frame button.bg-amt { border: 1.5px solid var(--line); border-radius: 10px; padding: 9px 10px; font-size: 14.5px; background: var(--surface); color: var(--ink); box-sizing: border-box; font-family: inherit; }
+      .bg-frame button.bg-amt.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+      .bg-frame button.bg-amt.empty { color: var(--ink-2); }
       .sheet-head h3 { margin: 0; }
       .sheet-x { width: 36px; height: 36px; border: 0; border-radius: 999px; background: var(--surface-2); color: var(--ink-2); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; padding: 0; }
       .sheet-x svg { width: 17px; height: 17px; }
       @media (max-height: 680px) {
         .edit-form .keypad { height: 164px; }
       }
-      .edit-save-row button { flex: 1; border-radius: 11px; font-size: 15px; font-weight: 800; padding: 12px 0; border: 0; }
-      .edit-save-row .cancel { background: var(--surface-2); color: var(--ink); }
-      .edit-save-row .ok { background: var(--accent); color: var(--accent-ink); }
-      .edit-save-row .ok:disabled { opacity: .35; }
       .date-head { font-size: 12px; font-weight: 700; color: var(--ink-2); margin: 14px 2px 7px; }
       .day-group:first-child .date-head { margin-top: 0; }
       button.date-head { display: flex; align-items: center; justify-content: flex-start; gap: 6px; width: calc(100% - 4px); background: none; border: 0; padding: 0; font: inherit; font-size: 12px; font-weight: 700; color: var(--ink-2); text-align: left; cursor: pointer; box-sizing: border-box; }
@@ -868,6 +878,53 @@
         head.addEventListener("pointercancel", endDrag);
       }
       function closeSheet() { overlay.classList.remove("open"); sheet.innerHTML = ""; sheet.classList.remove("sheet-fit"); sheet.style.transform = ""; sheet.style.transition = ""; }
+      /* ================= 金額入力（共通部品） ================= */
+      function keypadHTML(id) {
+        return '<div class="keypad" id="' + id + '">' +
+          '<button type="button" data-k="1">1</button><button type="button" data-k="2">2</button><button type="button" data-k="3">3</button>' +
+          '<button type="button" data-k="4">4</button><button type="button" data-k="5">5</button><button type="button" data-k="6">6</button>' +
+          '<button type="button" data-k="7">7</button><button type="button" data-k="8">8</button><button type="button" data-k="9">9</button>' +
+          '<button type="button" data-k="00" class="fn">00</button><button type="button" data-k="0">0</button><button type="button" data-k="bs" class="fn">⌫</button></div>';
+      }
+      function keypadPress(str, k) {
+        if (k === "bs") str = str.slice(0, -1);
+        else if (k === "00") { if (str) str += "00"; }
+        else { if (str.length >= 7) return str; str = (str + k).replace(/^0+(?=\d)/, ""); }
+        if (str.length > 7) str = str.slice(0, 7);
+        return str;
+      }
+      function bindKeypad(padEl, onKey) {
+        padEl.addEventListener("click", function (e) {
+          var b = e.target.closest("button"); if (!b) return;
+          onKey(b.getAttribute("data-k"));
+        });
+      }
+      function renderAmountInto(el, str) {
+        var v = str ? parseInt(str, 10) : 0;
+        el.innerHTML = '<span class="yen">¥</span>' + v.toLocaleString("ja-JP");
+        el.classList.toggle("empty", v === 0);
+      }
+      function renderAmtField(el, str) {
+        var v = str ? parseInt(str, 10) : 0;
+        el.textContent = fmtYen(v);
+        el.classList.toggle("empty", v === 0);
+      }
+      function methodBtnEl(m, selId, onPick) {
+        var b = document.createElement("button");
+        b.type = "button"; b.className = "method-btn" + (m.id === selId ? " sel" : "");
+        b.innerHTML = '<span class="mtxt"><span class="mname"><span class="mname-in"></span></span><span class="mkind"></span></span>';
+        b.querySelector(".mname-in").textContent = m.name;
+        b.querySelector(".mkind").textContent = methodSubLabel(m);
+        b.addEventListener("click", function () { onPick(m.id); });
+        return b;
+      }
+      function destBtnEl(m, selId, onPick) {
+        var b = document.createElement("button");
+        b.type = "button"; b.className = "dest-btn" + (m.id === selId ? " sel" : "");
+        b.textContent = m.name;
+        b.addEventListener("click", function () { onPick(m.id); });
+        return b;
+      }
       overlay.addEventListener("click", function (e) { if (e.target === overlay) closeSheet(); });
 
       /* ================= プルリフレッシュ防止 ================= */
@@ -881,8 +938,16 @@
         document.addEventListener("touchmove", function (e) {
           if (startY === null || e.touches.length !== 1) return;
           if (e.touches[0].clientY - startY <= 0) return; // 下方向への引っ張りだけが対象
-          var el = e.target && e.target.closest ? e.target.closest(".view, .sheet") : null;
-          if (!el || el.scrollTop <= 0) e.preventDefault();
+          // 一番手前のスクロール要素が先頭まで戻っている時だけ引っ張りを止める（シート内の部分スクロールでも効くように）
+          var n = e.target && e.target.nodeType === 1 ? e.target : null, scroller = null;
+          while (n && n !== document.body) {
+            if (n.scrollHeight > n.clientHeight + 1) {
+              var oy = window.getComputedStyle(n).overflowY;
+              if (oy === "auto" || oy === "scroll") { scroller = n; break; }
+            }
+            n = n.parentElement;
+          }
+          if (!scroller || scroller.scrollTop <= 0) e.preventDefault();
         }, { passive: false });
         document.addEventListener("touchend", function () { startY = null; });
         document.addEventListener("touchcancel", function () { startY = null; });
@@ -930,13 +995,7 @@
       function renderMethods() {
         methodsEl.innerHTML = "";
         state.methods.forEach(function (m) {
-          var b = document.createElement("button");
-          b.type = "button"; b.className = "method-btn" + (m.id === selMethod ? " sel" : "");
-          b.innerHTML = '<span class="mtxt"><span class="mname"><span class="mname-in"></span></span><span class="mkind"></span></span>';
-          b.querySelector(".mname-in").textContent = m.name;
-          b.querySelector(".mkind").textContent = methodSubLabel(m);
-          b.addEventListener("click", function () { selMethod = m.id; renderMethods(); renderDests(); validate(); });
-          methodsEl.appendChild(b);
+          methodsEl.appendChild(methodBtnEl(m, selMethod, function (id) { selMethod = id; renderMethods(); renderDests(); validate(); }));
         });
         if (!methodById(selMethod) && state.methods.length) selMethod = state.methods[0].id;
         methodsEl.style.gridTemplateColumns = state.methods.length === 1 ? "minmax(0, 1fr)" : state.methods.length === 2 ? "repeat(2, minmax(0, 1fr))" : "";
@@ -948,20 +1007,12 @@
         if (selDest && !list.some(function (m) { return m.id === selDest; })) selDest = null;
         if (!selDest && list.length) selDest = list[0].id;
         list.forEach(function (m) {
-          var b = document.createElement("button");
-          b.type = "button"; b.className = "dest-btn" + (m.id === selDest ? " sel" : "");
-          b.textContent = m.name;
-          b.addEventListener("click", function () { selDest = m.id; renderDests(); validate(); });
-          destsEl.appendChild(b);
+          destsEl.appendChild(destBtnEl(m, selDest, function (id) { selDest = id; renderDests(); validate(); }));
         });
         if (!list.length) destsEl.innerHTML = '<span style="font-size:12.5px;color:var(--ink-2)">チャージ先（電子マネー）が未登録です</span>';
       }
       function amountVal() { return amountStr ? parseInt(amountStr, 10) : 0; }
-      function renderAmount() {
-        var v = amountVal();
-        amountEl.innerHTML = '<span class="yen">¥</span>' + v.toLocaleString("ja-JP");
-        amountEl.classList.toggle("empty", v === 0);
-      }
+      function renderAmount() { renderAmountInto(amountEl, amountStr); }
       function validate() {
         var ok = amountVal() > 0 && !!methodById(selMethod);
         if (ok && selType === "charge") ok = !!selDest && selDest !== selMethod;
@@ -981,15 +1032,7 @@
         validate();
       }
       document.getElementById("chargeToggle").addEventListener("click", function () { setType(selType === "charge" ? "expense" : "charge"); });
-      document.getElementById("keypad").addEventListener("click", function (e) {
-        var b = e.target.closest("button"); if (!b) return;
-        var k = b.getAttribute("data-k");
-        if (k === "bs") amountStr = amountStr.slice(0, -1);
-        else if (k === "00") { if (amountStr) amountStr += "00"; }
-        else { if (amountStr.length >= 7) return; amountStr = (amountStr + k).replace(/^0+(?=\d)/, ""); }
-        if (amountStr.length > 7) amountStr = amountStr.slice(0, 7);
-        renderAmount(); validate();
-      });
+      bindKeypad(document.getElementById("keypad"), function (k) { amountStr = keypadPress(amountStr, k); renderAmount(); validate(); });
       document.getElementById("clearBtn").addEventListener("click", function () { amountStr = ""; renderAmount(); validate(); });
       recordBtn.addEventListener("click", function () {
         var m = methodById(selMethod); if (!m) return;
@@ -1075,13 +1118,20 @@
       function openAdjust(key) {
         var t = adjustTarget(key); if (!t) return;
         var cur = t.cur;
+        var adjStr = cur > 0 ? String(cur) : "";
         openSheet('<h3>' + esc(t.name) + ' の残高を合わせる</h3>' +
           '<div class="fld"><label>現在の残高（アプリ上の計算）</label><input type="text" value="' + fmtYen(cur) + '" disabled /></div>' +
-          '<div class="fld"><label for="adjVal">実際の残高</label><input type="number" id="adjVal" inputmode="numeric" value="' + cur + '" /></div>' +
+          '<div class="fld"><label>実際の残高</label><div class="amt-field num" id="adjVal"></div></div>' +
+          '<div class="amt-tools"><button class="clear-btn" id="adjClear" type="button">クリア</button></div>' +
+          keypadHTML("adjPad") +
           '<div class="row-btns"><button type="button" class="cancel" id="adjCancel">キャンセル</button><button type="button" class="ok" id="adjOk">合わせる</button></div>');
+        var adjEl = document.getElementById("adjVal"), adjOk = document.getElementById("adjOk");
+        function adjRender() { renderAmtField(adjEl, adjStr); adjOk.disabled = adjStr === ""; }
+        bindKeypad(document.getElementById("adjPad"), function (k) { adjStr = keypadPress(adjStr, k); adjRender(); });
+        document.getElementById("adjClear").addEventListener("click", function () { adjStr = ""; adjRender(); });
         document.getElementById("adjCancel").addEventListener("click", closeSheet);
-        document.getElementById("adjOk").addEventListener("click", function () {
-          var v = parseInt(document.getElementById("adjVal").value, 10);
+        adjOk.addEventListener("click", function () {
+          var v = parseInt(adjStr, 10);
           if (isNaN(v)) return;
           var delta = v - cur;
           if (delta !== 0) {
@@ -1090,24 +1140,44 @@
           }
           closeSheet(); renderAll(); toast(t.name + " の残高を " + fmtYen(v) + " に合わせた");
         });
+        adjRender();
       }
       function openSalarySheet() {
+        var strs = { amount: "", savings: state.baseSavings ? String(state.baseSavings) : "" };
+        var active = "amount";
         openSheet('<h3>給料を登録</h3>' +
           '<div class="fld"><label for="salDate">給料日</label><input type="date" id="salDate" value="' + todayStr() + '" /></div>' +
-          '<div class="fld"><label for="salAmount">金額</label><input type="number" id="salAmount" inputmode="numeric" min="0" placeholder="0" /></div>' +
-          '<div class="fld"><label for="salSavings">この月の貯金分</label><input type="number" id="salSavings" inputmode="numeric" min="0" value="' + (state.baseSavings || 0) + '" /></div>' +
+          '<div class="fld"><label>金額</label><div class="amt-field num" data-sf="amount"></div></div>' +
+          '<div class="fld"><label>この月の貯金分</label><div class="amt-field num" data-sf="savings"></div></div>' +
+          '<div class="amt-tools"><button class="clear-btn" id="salClear" type="button">クリア</button></div>' +
+          keypadHTML("salPad") +
           '<div class="row-btns"><button type="button" class="cancel" id="salCancel">キャンセル</button><button type="button" class="ok" id="salOk">登録する</button></div>');
+        var salOk = document.getElementById("salOk");
+        function salRender() {
+          sheet.querySelectorAll(".amt-field").forEach(function (el) {
+            var f = el.getAttribute("data-sf");
+            renderAmtField(el, strs[f]);
+            el.classList.toggle("active", f === active);
+          });
+          salOk.disabled = !(parseInt(strs.amount, 10) > 0);
+        }
+        sheet.querySelectorAll(".amt-field").forEach(function (el) {
+          el.addEventListener("click", function () { active = el.getAttribute("data-sf"); salRender(); });
+        });
+        bindKeypad(document.getElementById("salPad"), function (k) { strs[active] = keypadPress(strs[active], k); salRender(); });
+        document.getElementById("salClear").addEventListener("click", function () { strs[active] = ""; salRender(); });
         document.getElementById("salCancel").addEventListener("click", closeSheet);
-        document.getElementById("salOk").addEventListener("click", function () {
+        salOk.addEventListener("click", function () {
           var d = document.getElementById("salDate").value || todayStr();
-          var a = parseInt(document.getElementById("salAmount").value, 10);
-          var s = parseInt(document.getElementById("salSavings").value, 10);
-          if (!a || a <= 0) { toast("給料の金額を入れてね"); return; }
+          var a = parseInt(strs.amount, 10);
+          var s = parseInt(strs.savings, 10);
+          if (!a || a <= 0) return;
           state.salaries.push({ id: uid(), ts: Date.now(), date: d, amount: a, savings: isNaN(s) ? 0 : s });
           state.salaries.sort(function (x, y) { return x.date < y.date ? -1 : 1; });
           save(); closeSheet(); renderAll(); switchView("money");
           toast("給料 " + fmtYen(a) + " を登録した");
         });
+        salRender();
       }
 
       /* ================= 予算編成 ================= */
@@ -1126,11 +1196,15 @@
       }
       function openBudgetSheet(start) {
         openSheet('<h3>予算を編成</h3>' +
-          '<div class="fld"><label for="bgPayday">対象の給料日</label><select id="bgPayday">' + budgetPaydayOptions(start) + '</select></div>' +
-          '<div id="bgBody"></div>' +
-          '<div class="row-btns"><button type="button" class="cancel" id="bgCancel">キャンセル</button><button type="button" class="ok" id="bgSave">保存する</button></div>');
+          '<div class="fld" style="flex:none"><label for="bgPayday">対象の給料日</label><select id="bgPayday">' + budgetPaydayOptions(start) + '</select></div>' +
+          '<div id="bgBody" style="flex:1 1 auto;min-height:0;overflow-y:auto"></div>' +
+          '<div id="bgPadZone" style="flex:none">' +
+          '<div class="amt-tools"><button class="clear-btn" id="bgClear" type="button">クリア</button></div>' +
+          keypadHTML("bgPad") + '</div>' +
+          '<div class="row-btns" style="flex:none"><button type="button" class="cancel" id="bgCancel">キャンセル</button><button type="button" class="ok" id="bgSave">保存する</button></div>');
+        sheet.classList.add("sheet-fit");
         var selEl = document.getElementById("bgPayday");
-        var curStart = start, workFrames = [], origIds = [], bgUsed = [];
+        var curStart = start, workFrames = [], origIds = [], bgUsed = [], bgActive = 0, bgStr = "";
         function loadPeriod(p) {
           curStart = p;
           var b = budgetFor(p);
@@ -1144,7 +1218,7 @@
             workFrames = prev ? prev.frames.map(function (f) { return { id: uid(), name: f.name, amount: +f.amount || 0 }; }) : [];
             origIds = [];
           }
-          renderBgBody();
+          renderBgBody(); bgSyncStr(); validateBg();
         }
         function bgFree() {
           var pc = periodCalc(curStart);
@@ -1162,7 +1236,7 @@
           bgUsed = [];
           workFrames.forEach(function (f, i) {
             h += '<div class="bg-card"><div class="bg-frame"><input type="text" class="bg-name" data-i="' + i + '" maxlength="6" placeholder="枠の名前（6文字まで）" value="' + esc(f.name) + '">' +
-              '<input type="number" class="bg-amt num" data-i="' + i + '" inputmode="numeric" min="0" placeholder="金額" value="' + (f.amount ? f.amount : "") + '">' +
+              '<button type="button" class="bg-amt num" data-i="' + i + '">' + fmtYen(+f.amount || 0) + '</button>' +
               '<button type="button" class="icon-btn del bg-del" data-i="' + i + '" aria-label="枠を削除">' + TRASH_SVG + '</button></div>';
             if (pc.budget && pc.sal) {
               var used = pc.frameUsed[f.id] || 0;
@@ -1178,31 +1252,62 @@
           h += '<button type="button" class="ghost-btn" id="bgAdd">枠を追加</button>';
           h += '<div class="kv-row bg-free"><span class="k" style="font-weight:800">自由費</span><span class="v num" id="bgFreeVal">' + (pc.sal ? fmtYen(bgFree()) : '給料登録後に確定') + '</span></div>';
           document.getElementById("bgBody").innerHTML = h;
-          wireBg();
+          wireBg(); refreshBgAmt();
         }
-        function syncFromInputs() {
+        function syncNames() {
           document.querySelectorAll(".bg-name").forEach(function (inp) { var f = workFrames[+inp.getAttribute("data-i")]; if (f) f.name = inp.value; });
-          document.querySelectorAll(".bg-amt").forEach(function (inp) { var f = workFrames[+inp.getAttribute("data-i")]; if (f) f.amount = parseInt(inp.value, 10) || 0; });
+        }
+        function bgSyncStr() {
+          if (bgActive >= workFrames.length) bgActive = Math.max(0, workFrames.length - 1);
+          bgStr = workFrames[bgActive] ? String(+workFrames[bgActive].amount || "") : "";
+        }
+        function validateBg() {
+          var bad = workFrames.some(function (f) { return (+f.amount || 0) > 0 && !String(f.name || "").trim(); });
+          document.getElementById("bgSave").disabled = bad;
+        }
+        function refreshBgAmt() {
+          document.querySelectorAll(".bg-amt").forEach(function (b) {
+            var i = +b.getAttribute("data-i");
+            b.textContent = fmtYen(workFrames[i] ? (+workFrames[i].amount || 0) : 0);
+            b.classList.toggle("active", i === bgActive);
+            b.classList.toggle("empty", !(workFrames[i] && +workFrames[i].amount));
+          });
           var fv = document.getElementById("bgFreeVal");
           if (fv && periodCalc(curStart).sal) fv.textContent = fmtYen(bgFree());
           document.querySelectorAll(".bg-used").forEach(function (el) {
             var i = +el.getAttribute("data-i");
-            el.textContent = '使用済み：' + fmtYen(bgUsed[i] || 0) + '/' + fmtYen(workFrames[i] ? (+workFrames[i].amount || 0) : 0);
+            if (workFrames[i]) el.textContent = '使用済み：' + fmtYen(bgUsed[i] || 0) + '/' + fmtYen(+workFrames[i].amount || 0);
           });
+          var pz = document.getElementById("bgPadZone");
+          if (pz) pz.style.display = workFrames.length ? "" : "none";
         }
         function wireBg() {
-          document.querySelectorAll(".bg-name, .bg-amt").forEach(function (inp) { inp.addEventListener("input", syncFromInputs); });
-          document.querySelectorAll(".bg-del").forEach(function (b) {
-            b.addEventListener("click", function () { syncFromInputs(); workFrames.splice(+b.getAttribute("data-i"), 1); renderBgBody(); });
+          document.querySelectorAll(".bg-name").forEach(function (inp) { inp.addEventListener("input", function () { syncNames(); validateBg(); }); });
+          document.querySelectorAll(".bg-amt").forEach(function (b) {
+            b.addEventListener("click", function () { bgActive = +b.getAttribute("data-i"); bgStr = workFrames[bgActive] ? String(+workFrames[bgActive].amount || "") : ""; refreshBgAmt(); });
           });
-          document.getElementById("bgAdd").addEventListener("click", function () { syncFromInputs(); workFrames.push({ id: uid(), name: "", amount: 0 }); renderBgBody(); });
+          document.querySelectorAll(".bg-del").forEach(function (b) {
+            b.addEventListener("click", function () { syncNames(); workFrames.splice(+b.getAttribute("data-i"), 1); renderBgBody(); bgSyncStr(); validateBg(); });
+          });
+          document.getElementById("bgAdd").addEventListener("click", function () { syncNames(); workFrames.push({ id: uid(), name: "", amount: 0 }); bgActive = workFrames.length - 1; renderBgBody(); bgSyncStr(); validateBg(); });
         }
         selEl.addEventListener("change", function () { loadPeriod(selEl.value); });
+        bindKeypad(document.getElementById("bgPad"), function (k) {
+          if (!workFrames.length) return;
+          bgStr = keypadPress(bgStr, k);
+          workFrames[bgActive].amount = parseInt(bgStr, 10) || 0;
+          refreshBgAmt(); validateBg();
+        });
+        document.getElementById("bgClear").addEventListener("click", function () {
+          if (!workFrames.length) return;
+          bgStr = ""; workFrames[bgActive].amount = 0;
+          refreshBgAmt(); validateBg();
+        });
         document.getElementById("bgCancel").addEventListener("click", closeSheet);
         document.getElementById("bgSave").addEventListener("click", function () {
-          syncFromInputs();
+          syncNames();
           var frames = workFrames.filter(function (f) { return f.name.trim() || (+f.amount || 0) > 0; });
-          for (var i = 0; i < frames.length; i++) if (!frames[i].name.trim()) { toast("枠の名前を入れてね"); return; }
+          if (frames.some(function (f) { return !f.name.trim(); })) return;
           frames.forEach(function (f) { f.name = f.name.trim().slice(0, 6); f.amount = +f.amount || 0; });
           // 消した枠に付いていたリンクは未設定に戻す
           var removed = origIds.filter(function (id) { return !frames.some(function (f) { return f.id === id; }); });
@@ -1368,11 +1473,16 @@
           state.savingsGoal = isNaN(v) || v <= 0 ? null : v;
           save(); renderBalance(); toast(state.savingsGoal ? "目標額を保存した" : "目標額を消した");
         });
-        document.getElementById("wdBtn").addEventListener("click", function () {
+        var wdBtnEl = document.getElementById("wdBtn");
+        function wdValidate() { wdBtnEl.disabled = !(parseInt(document.getElementById("wdAmount").value, 10) > 0) || !methodById(document.getElementById("wdDest").value); }
+        document.getElementById("wdAmount").addEventListener("input", wdValidate);
+        document.getElementById("wdDest").addEventListener("change", wdValidate);
+        wdValidate();
+        wdBtnEl.addEventListener("click", function () {
           var v = parseInt(document.getElementById("wdAmount").value, 10);
           var dest = methodById(document.getElementById("wdDest").value);
-          if (!v || v <= 0) { toast("引落額を入れてね"); return; }
-          if (!dest) { toast("引落先を選んでね"); return; }
+          if (!v || v <= 0) return;
+          if (!dest) return;
           if (v > savingsTotal()) { toast("貯蓄残高が足りないよ"); return; }
           state.records.push({ id: uid(), ts: Date.now(), date: todayStr(), type: "withdraw", methodId: dest.id, methodName: dest.name, amount: v });
           save(); renderAll(); switchView("balance");
@@ -1650,68 +1760,108 @@
         else openEditRecord(obj);
       }
       function openEditSalary(sal) {
+        var strs = { amount: sal.amount ? String(sal.amount) : "", savings: +sal.savings ? String(+sal.savings) : "" };
+        var active = "amount";
         openSheet('<h3>給料を修正</h3>' +
           '<div class="fld"><label for="eSalDate">給料日</label><input type="date" id="eSalDate" /></div>' +
-          '<div class="fld"><label for="eSalAmount">金額</label><input type="number" id="eSalAmount" inputmode="numeric" min="0" /></div>' +
-          '<div class="fld"><label for="eSalSavings">この月の貯金分</label><input type="number" id="eSalSavings" inputmode="numeric" min="0" /></div>' +
+          '<div class="fld"><label>金額</label><div class="amt-field num" data-sf="amount"></div></div>' +
+          '<div class="fld"><label>この月の貯金分</label><div class="amt-field num" data-sf="savings"></div></div>' +
+          '<div class="amt-tools"><button class="clear-btn" id="eSalClear" type="button">クリア</button></div>' +
+          keypadHTML("eSalPad") +
           '<div class="row-btns"><button type="button" class="cancel" id="eSalCancel">キャンセル</button><button type="button" class="ok" id="eSalOk">保存する</button></div>');
         document.getElementById("eSalDate").value = sal.date;
-        document.getElementById("eSalAmount").value = sal.amount;
-        document.getElementById("eSalSavings").value = +sal.savings || 0;
+        var eSalOk = document.getElementById("eSalOk");
+        function eSalRender() {
+          sheet.querySelectorAll(".amt-field").forEach(function (el) {
+            var f = el.getAttribute("data-sf");
+            renderAmtField(el, strs[f]);
+            el.classList.toggle("active", f === active);
+          });
+          eSalOk.disabled = !(parseInt(strs.amount, 10) > 0);
+        }
+        sheet.querySelectorAll(".amt-field").forEach(function (el) {
+          el.addEventListener("click", function () { active = el.getAttribute("data-sf"); eSalRender(); });
+        });
+        bindKeypad(document.getElementById("eSalPad"), function (k) { strs[active] = keypadPress(strs[active], k); eSalRender(); });
+        document.getElementById("eSalClear").addEventListener("click", function () { strs[active] = ""; eSalRender(); });
         document.getElementById("eSalCancel").addEventListener("click", closeSheet);
-        document.getElementById("eSalOk").addEventListener("click", function () {
+        eSalOk.addEventListener("click", function () {
           var d = document.getElementById("eSalDate").value || sal.date;
-          var a = parseInt(document.getElementById("eSalAmount").value, 10);
-          var s = parseInt(document.getElementById("eSalSavings").value, 10);
-          if (!a || a <= 0) { toast("給料の金額を入れてね"); return; }
+          var a = parseInt(strs.amount, 10);
+          var s = parseInt(strs.savings, 10);
+          if (!a || a <= 0) return;
           sal.date = d; sal.amount = a; sal.savings = isNaN(s) ? 0 : s;
           state.salaries.sort(function (x, y) { return x.date < y.date ? -1 : 1; });
           save(); closeSheet(); renderAll(); switchView("history");
           toast("給料を修正した");
         });
+        eSalRender();
       }
       function openEditAdjust(rec) {
+        var sign = rec.amount < 0 ? -1 : 1;
+        var adjStr = String(Math.abs(rec.amount));
         openSheet('<h3>残高調整を修正</h3>' +
           '<div class="fld"><label for="eAdjDate">日付</label><input type="date" id="eAdjDate" /></div>' +
           '<div class="fld"><label>対象</label><input type="text" id="eAdjMethod" disabled /></div>' +
-          '<div class="fld"><label for="eAdjVal">調整額（増やす場合はそのまま、減らす場合は − を付けて入力）</label><input type="number" id="eAdjVal" inputmode="numeric" /></div>' +
+          '<div class="fld"><label>調整額</label><div class="sign-row"><button type="button" class="sign-btn" id="eAdjPlus">＋ 増やす</button><button type="button" class="sign-btn" id="eAdjMinus">− 減らす</button></div><div class="amt-field num" id="eAdjVal"></div></div>' +
+          '<div class="amt-tools"><button class="clear-btn" id="eAdjClear" type="button">クリア</button></div>' +
+          keypadHTML("eAdjPad") +
           '<div class="row-btns"><button type="button" class="cancel" id="eAdjCancel">キャンセル</button><button type="button" class="ok" id="eAdjOk">保存する</button></div>');
         document.getElementById("eAdjDate").value = rec.date;
         document.getElementById("eAdjMethod").value = rec.methodName;
-        document.getElementById("eAdjVal").value = rec.amount;
+        var eAdjValEl = document.getElementById("eAdjVal"), eAdjOk = document.getElementById("eAdjOk");
+        function eAdjRender() {
+          renderAmtField(eAdjValEl, adjStr);
+          document.getElementById("eAdjPlus").classList.toggle("sel", sign > 0);
+          document.getElementById("eAdjMinus").classList.toggle("sel", sign < 0);
+          eAdjOk.disabled = !(parseInt(adjStr, 10) > 0);
+        }
+        document.getElementById("eAdjPlus").addEventListener("click", function () { sign = 1; eAdjRender(); });
+        document.getElementById("eAdjMinus").addEventListener("click", function () { sign = -1; eAdjRender(); });
+        bindKeypad(document.getElementById("eAdjPad"), function (k) { adjStr = keypadPress(adjStr, k); eAdjRender(); });
+        document.getElementById("eAdjClear").addEventListener("click", function () { adjStr = ""; eAdjRender(); });
         document.getElementById("eAdjCancel").addEventListener("click", closeSheet);
-        document.getElementById("eAdjOk").addEventListener("click", function () {
-          var v = parseInt(document.getElementById("eAdjVal").value, 10);
-          if (isNaN(v) || v === 0) { toast("0以外の金額を入れてね"); return; }
+        eAdjOk.addEventListener("click", function () {
+          var v = sign * (parseInt(adjStr, 10) || 0);
+          if (!v) return;
           rec.date = document.getElementById("eAdjDate").value || rec.date;
           rec.amount = v;
           save(); closeSheet(); renderAll(); switchView("history");
           toast("残高調整を修正した");
         });
+        eAdjRender();
       }
       function openEditWithdraw(rec) {
         openSheet('<h3>引落を修正</h3>' +
           '<div class="fld"><label for="eWdDate">日付</label><input type="date" id="eWdDate" /></div>' +
           '<div class="fld"><label for="eWdDest">引落先</label><select id="eWdDest"></select></div>' +
-          '<div class="fld"><label for="eWdAmount">金額</label><input type="number" id="eWdAmount" inputmode="numeric" min="0" /></div>' +
+          '<div class="fld"><label>金額</label><div class="amt-field num" id="eWdVal"></div></div>' +
+          '<div class="amt-tools"><button class="clear-btn" id="eWdClear" type="button">クリア</button></div>' +
+          keypadHTML("eWdPad") +
           '<div class="row-btns"><button type="button" class="cancel" id="eWdCancel">キャンセル</button><button type="button" class="ok" id="eWdOk">保存する</button></div>');
+        var wdStr = rec.amount ? String(rec.amount) : "";
         document.getElementById("eWdDate").value = rec.date;
         var dSel = document.getElementById("eWdDest");
         dSel.innerHTML = state.methods.filter(function (m) { return m.kind === "cash" || m.kind === "emoney"; })
           .map(function (m) { return '<option value="' + m.id + '">' + esc(m.name) + '</option>'; }).join("");
         if (methodById(rec.methodId)) dSel.value = rec.methodId;
-        document.getElementById("eWdAmount").value = rec.amount;
+        var eWdValEl = document.getElementById("eWdVal"), eWdOk = document.getElementById("eWdOk");
+        function eWdRender() { renderAmtField(eWdValEl, wdStr); eWdOk.disabled = !(parseInt(wdStr, 10) > 0) || !methodById(dSel.value); }
+        bindKeypad(document.getElementById("eWdPad"), function (k) { wdStr = keypadPress(wdStr, k); eWdRender(); });
+        document.getElementById("eWdClear").addEventListener("click", function () { wdStr = ""; eWdRender(); });
+        dSel.addEventListener("change", eWdRender);
         document.getElementById("eWdCancel").addEventListener("click", closeSheet);
-        document.getElementById("eWdOk").addEventListener("click", function () {
-          var v = parseInt(document.getElementById("eWdAmount").value, 10);
+        eWdOk.addEventListener("click", function () {
+          var v = parseInt(wdStr, 10);
           var dest = methodById(dSel.value);
-          if (!v || v <= 0) { toast("金額を入れてね"); return; }
-          if (!dest) { toast("引落先を選んでね"); return; }
+          if (!v || v <= 0) return;
+          if (!dest) return;
           rec.date = document.getElementById("eWdDate").value || rec.date;
           rec.amount = v; rec.methodId = dest.id; rec.methodName = dest.name;
           save(); closeSheet(); renderAll(); switchView("history");
           toast("引落を修正した");
         });
+        eWdRender();
       }
       function openEditRecord(rec) {
         var eMethod = rec.methodId && methodById(rec.methodId) ? rec.methodId : (state.methods.length ? state.methods[0].id : null);
@@ -1726,22 +1876,14 @@
           '<div class="dest-strip" id="eDestStrip"><div class="dests" id="eDests"></div></div></div>' +
           '<div class="amount-wrap"><div class="amount-display empty num" id="eAmountDisplay"><span class="yen">¥</span>0</div>' +
           '<button class="clear-btn" id="eClearBtn" type="button">クリア</button></div>' +
-          '<div class="keypad" id="eKeypad">' +
-          '<button type="button" data-k="1">1</button><button type="button" data-k="2">2</button><button type="button" data-k="3">3</button>' +
-          '<button type="button" data-k="4">4</button><button type="button" data-k="5">5</button><button type="button" data-k="6">6</button>' +
-          '<button type="button" data-k="7">7</button><button type="button" data-k="8">8</button><button type="button" data-k="9">9</button>' +
-          '<button type="button" data-k="00" class="fn">00</button><button type="button" data-k="0">0</button><button type="button" data-k="bs" class="fn">⌫</button></div>' +
-          '<div class="edit-save-row"><button type="button" class="cancel" id="eCancel">キャンセル</button><button type="button" class="ok" id="eSave">保存する</button></div></div>');
+          keypadHTML("eKeypad") +
+          '<div class="row-btns"><button type="button" class="cancel" id="eCancel">キャンセル</button><button type="button" class="ok" id="eSave">保存する</button></div></div>');
         sheet.classList.add("sheet-fit");
         document.getElementById("eRecDate").value = rec.date;
         var eMethodsEl = document.getElementById("eMethods"), eDestsEl = document.getElementById("eDests");
         var eAmountEl = document.getElementById("eAmountDisplay"), eSaveBtn = document.getElementById("eSave");
         function eAmountVal() { return eAmountStr ? parseInt(eAmountStr, 10) : 0; }
-        function eRenderAmount() {
-          var v = eAmountVal();
-          eAmountEl.innerHTML = '<span class="yen">¥</span>' + v.toLocaleString("ja-JP");
-          eAmountEl.classList.toggle("empty", v === 0);
-        }
+        function eRenderAmount() { renderAmountInto(eAmountEl, eAmountStr); }
         function eValidate() {
           var ok = eAmountVal() > 0 && !!methodById(eMethod);
           if (ok && eType === "charge") ok = !!eDest && eDest !== eMethod;
@@ -1750,13 +1892,7 @@
         function eRenderMethods() {
           eMethodsEl.innerHTML = "";
           state.methods.forEach(function (m) {
-            var b = document.createElement("button");
-            b.type = "button"; b.className = "method-btn" + (m.id === eMethod ? " sel" : "");
-            b.innerHTML = '<span class="mtxt"><span class="mname"><span class="mname-in"></span></span><span class="mkind"></span></span>';
-            b.querySelector(".mname-in").textContent = m.name;
-            b.querySelector(".mkind").textContent = methodSubLabel(m);
-            b.addEventListener("click", function () { eMethod = m.id; eRenderMethods(); eRenderDests(); eValidate(); });
-            eMethodsEl.appendChild(b);
+            eMethodsEl.appendChild(methodBtnEl(m, eMethod, function (id) { eMethod = id; eRenderMethods(); eRenderDests(); eValidate(); }));
           });
           eMethodsEl.style.gridTemplateColumns = state.methods.length === 1 ? "minmax(0, 1fr)" : state.methods.length === 2 ? "repeat(2, minmax(0, 1fr))" : "";
           scheduleNameFit(eMethodsEl);
@@ -1767,11 +1903,7 @@
           if (eDest && !list.some(function (m) { return m.id === eDest; })) eDest = null;
           if (!eDest && list.length) eDest = list[0].id;
           list.forEach(function (m) {
-            var b = document.createElement("button");
-            b.type = "button"; b.className = "dest-btn" + (m.id === eDest ? " sel" : "");
-            b.textContent = m.name;
-            b.addEventListener("click", function () { eDest = m.id; eRenderDests(); eValidate(); });
-            eDestsEl.appendChild(b);
+            eDestsEl.appendChild(destBtnEl(m, eDest, function (id) { eDest = id; eRenderDests(); eValidate(); }));
           });
           if (!list.length) eDestsEl.innerHTML = '<span style="font-size:12.5px;color:var(--ink-2)">チャージ先（電子マネー）が未登録です</span>';
         }
@@ -1783,15 +1915,7 @@
           eValidate();
         }
         document.getElementById("eChargeToggle").addEventListener("click", function () { eSetType(eType === "charge" ? "expense" : "charge"); });
-        document.getElementById("eKeypad").addEventListener("click", function (e) {
-          var b = e.target.closest("button"); if (!b) return;
-          var k = b.getAttribute("data-k");
-          if (k === "bs") eAmountStr = eAmountStr.slice(0, -1);
-          else if (k === "00") { if (eAmountStr) eAmountStr += "00"; }
-          else { if (eAmountStr.length >= 7) return; eAmountStr = (eAmountStr + k).replace(/^0+(?=\d)/, ""); }
-          if (eAmountStr.length > 7) eAmountStr = eAmountStr.slice(0, 7);
-          eRenderAmount(); eValidate();
-        });
+        bindKeypad(document.getElementById("eKeypad"), function (k) { eAmountStr = keypadPress(eAmountStr, k); eRenderAmount(); eValidate(); });
         document.getElementById("eClearBtn").addEventListener("click", function () { eAmountStr = ""; eRenderAmount(); eValidate(); });
         document.getElementById("eCancel").addEventListener("click", closeSheet);
         eSaveBtn.addEventListener("click", function () {
@@ -1815,6 +1939,26 @@
         return h;
       }
       /* ---------- 設定：固定費の編集 ---------- */
+      function openDeleteFixed(id) {
+        var idx = -1, f = null;
+        state.fixedCosts.forEach(function (x, i) { if (x.id === id) { idx = i; f = x; } });
+        if (!f) return;
+        var m = methodById(f.methodId);
+        openSheet('<h3>この固定費を削除します。</h3>' +
+          '<div class="del-detail">' +
+          '<div class="kv-row"><span class="k">名前</span><span class="v">' + esc(f.name) + '</span></div>' +
+          '<div class="kv-row"><span class="k">支払い方法</span><span class="v">' + esc(m ? m.name : "") + '</span></div>' +
+          '<div class="kv-row"><span class="k">金額</span><span class="v num neg">−' + fmtYen(f.amount) + '</span></div>' +
+          '<div class="kv-row"><span class="k">請求日</span><span class="v">毎月' + f.billDay + '日</span></div>' +
+          '</div>' +
+          '<div class="row-btns"><button type="button" class="danger-ok" id="dfxYes">はい</button><button type="button" class="cancel" id="dfxNo">いいえ</button></div>');
+        document.getElementById("dfxNo").addEventListener("click", closeSheet);
+        document.getElementById("dfxYes").addEventListener("click", function () {
+          state.fixedCosts.splice(idx, 1);
+          save(); closeSheet(); fillSettings(); renderAll();
+          toast("固定費を削除した", function () { state.fixedCosts.splice(idx, 0, f); save(); fillSettings(); });
+        });
+      }
       function openEditFixed(id) {
         var f = null;
         state.fixedCosts.forEach(function (x) { if (x.id === id) f = x; });
@@ -1824,24 +1968,32 @@
           '<div class="fld-row">' +
           '<div class="fld"><label for="efxMethod">支払い方法</label><select id="efxMethod"></select></div>' +
           '<div class="fld"><label for="efxDay">請求日</label><select id="efxDay"></select></div></div>' +
-          '<div class="fld"><label for="efxAmount">金額</label><input type="number" id="efxAmount" inputmode="numeric" min="0" /></div>' +
+          '<div class="fld"><label>金額</label><div class="amt-field num" id="efxVal"></div></div>' +
+          '<div class="amt-tools"><button class="clear-btn" id="efxClear" type="button">クリア</button></div>' +
+          keypadHTML("efxPad") +
           '<div class="row-btns"><button type="button" class="cancel" id="efxCancel">キャンセル</button><button type="button" class="ok" id="efxOk">保存する</button></div>');
         document.getElementById("efxName").value = f.name || "";
         var mSel = document.getElementById("efxMethod");
         mSel.innerHTML = state.methods.map(function (m) { return '<option value="' + m.id + '">' + esc(m.name) + '</option>'; }).join("");
         if (methodById(f.methodId)) mSel.value = f.methodId;
         document.getElementById("efxDay").innerHTML = dayOptions(f.billDay, false);
-        document.getElementById("efxAmount").value = f.amount;
+        var efxStr = f.amount ? String(f.amount) : "";
+        var efxValEl = document.getElementById("efxVal"), efxOk = document.getElementById("efxOk"), efxNameEl = document.getElementById("efxName");
+        function efxRender() { renderAmtField(efxValEl, efxStr); efxOk.disabled = !(efxNameEl.value.trim() && parseInt(efxStr, 10) > 0); }
+        bindKeypad(document.getElementById("efxPad"), function (k) { efxStr = keypadPress(efxStr, k); efxRender(); });
+        document.getElementById("efxClear").addEventListener("click", function () { efxStr = ""; efxRender(); });
+        efxNameEl.addEventListener("input", efxRender);
         document.getElementById("efxCancel").addEventListener("click", closeSheet);
-        document.getElementById("efxOk").addEventListener("click", function () {
-          var name = document.getElementById("efxName").value.trim();
-          var amount = parseInt(document.getElementById("efxAmount").value, 10);
-          if (!name) { toast("固定費の名前を入れてね"); return; }
-          if (!amount || amount <= 0) { toast("金額を入れてね"); return; }
+        efxOk.addEventListener("click", function () {
+          var name = efxNameEl.value.trim();
+          var amount = parseInt(efxStr, 10);
+          if (!name) return;
+          if (!amount || amount <= 0) return;
           f.name = name; f.methodId = mSel.value; f.amount = amount; f.billDay = +document.getElementById("efxDay").value;
           save(); closeSheet(); fillSettings(); renderAll();
           toast("固定費を保存した");
         });
+        efxRender();
       }
       /* ---------- 設定：支払い方法の編集・削除 ---------- */
       function openEditMethod(id) {
@@ -1865,10 +2017,14 @@
         function syncCardRow() { cardRow.style.display = kindSel.value === "card" ? "" : "none"; }
         syncCardRow();
         kindSel.addEventListener("change", syncCardRow);
+        var emtOk = document.getElementById("emtOk"), emtNameEl = document.getElementById("emtName");
+        function emtRender() { emtOk.disabled = !emtNameEl.value.trim(); }
+        emtNameEl.addEventListener("input", emtRender);
+        emtRender();
         document.getElementById("emtCancel").addEventListener("click", closeSheet);
-        document.getElementById("emtOk").addEventListener("click", function () {
-          var name = document.getElementById("emtName").value.trim();
-          if (!name) { toast("名前を入れてね"); return; }
+        emtOk.addEventListener("click", function () {
+          var name = emtNameEl.value.trim();
+          if (!name) return;
           var oldName = m.name;
           m.name = name;
           m.kind = kindSel.value;
@@ -1898,11 +2054,13 @@
           '<div class="row-btns"><button type="button" class="danger-ok" id="dmtYes">はい</button><button type="button" class="cancel" id="dmtNo">いいえ</button></div>');
         document.getElementById("dmtNo").addEventListener("click", closeSheet);
         document.getElementById("dmtYes").addEventListener("click", function () {
+          var idx = -1, removed = null;
+          state.methods.forEach(function (x, i) { if (x.id === id) { idx = i; removed = x; } });
           state.methods = state.methods.filter(function (x) { return x.id !== id; });
           if (selMethod === id) selMethod = state.methods.length ? state.methods[0].id : null;
           if (selDest === id) selDest = null;
           save(); closeSheet(); fillSettings(); renderMethods(); renderDests(); validate();
-          toast("支払い方法を削除した");
+          toast("支払い方法を削除した", removed ? function () { state.methods.splice(idx, 0, removed); save(); fillSettings(); renderMethods(); renderDests(); validate(); } : null);
         });
       }
       function fillSettings() {
@@ -1911,7 +2069,7 @@
         for (var pd = 1; pd <= 31; pd++) ph += '<option value="' + pd + '"' + (state.paydayDay === pd ? " selected" : "") + ">" + pd + "日</option>";
         document.getElementById("paydaySel").innerHTML = ph;
         var fl = document.getElementById("fixedList"), fh = "";
-        if (!state.fixedCosts.length) fh = '<div style="font-size:12.5px;color:var(--ink-2);padding:8px 2px">固定費はまだ登録されていません</div>';
+        if (!state.fixedCosts.length) fh = '<div class="empty-note">固定費はまだ登録されていません</div>';
         state.fixedCosts.forEach(function (f) {
           var m = methodById(f.methodId);
           fh += '<div class="set-item"><div><div class="si-name">' + esc(f.name || "固定費") + '</div>' +
@@ -1927,10 +2085,7 @@
           b.addEventListener("click", function () { openEditFixed(b.getAttribute("data-editfx")); });
         });
         fl.querySelectorAll("[data-delfx]").forEach(function (b) {
-          b.addEventListener("click", function () {
-            state.fixedCosts = state.fixedCosts.filter(function (f) { return f.id !== b.getAttribute("data-delfx"); });
-            save(); fillSettings(); toast("固定費を削除した");
-          });
+          b.addEventListener("click", function () { openDeleteFixed(b.getAttribute("data-delfx")); });
         });
         var fxSel = document.getElementById("fxMethod");
         fxSel.innerHTML = state.methods.map(function (m) { return '<option value="' + m.id + '">' + esc(m.name) + '</option>'; }).join("");
@@ -1964,23 +2119,38 @@
         state.paydayDay = pv === "" ? null : +pv;
         save(); toast("保存した");
       });
+      (function () {
+        var fxBtn = document.getElementById("addFixed");
+        function fxValidate() { fxBtn.disabled = !(document.getElementById("fxName").value.trim() && parseInt(document.getElementById("fxAmount").value, 10) > 0); }
+        document.getElementById("fxName").addEventListener("input", fxValidate);
+        document.getElementById("fxAmount").addEventListener("input", fxValidate);
+        fxValidate();
+      })();
       document.getElementById("addFixed").addEventListener("click", function () {
         var name = document.getElementById("fxName").value.trim();
         var amount = parseInt(document.getElementById("fxAmount").value, 10);
-        if (!name) { toast("固定費の名前を入れてね"); return; }
-        if (!amount || amount <= 0) { toast("金額を入れてね"); return; }
+        if (!name) return;
+        if (!amount || amount <= 0) return;
         state.fixedCosts.push({ id: uid(), name: name, methodId: document.getElementById("fxMethod").value, amount: amount, billDay: +document.getElementById("fxDay").value, since: todayStr().slice(0, 7) });
         save(); document.getElementById("fxName").value = ""; document.getElementById("fxAmount").value = "";
+        document.getElementById("addFixed").disabled = true;
         fillSettings(); toast("固定費を追加した");
       });
+      (function () {
+        var mtBtn = document.getElementById("addMethod");
+        function mtValidate() { mtBtn.disabled = !document.getElementById("mtName").value.trim(); }
+        document.getElementById("mtName").addEventListener("input", mtValidate);
+        mtValidate();
+      })();
       document.getElementById("addMethod").addEventListener("click", function () {
         var name = document.getElementById("mtName").value.trim();
-        if (!name) { toast("名前を入れてね"); return; }
+        if (!name) return;
         var kind = document.getElementById("mtKind").value;
         var m = { id: uid(), name: name, kind: kind };
         if (kind === "card") { m.closeDay = +document.getElementById("mtClose").value; m.payDay = +document.getElementById("mtPay").value; }
         state.methods.push(m); save();
         document.getElementById("mtName").value = "";
+        document.getElementById("addMethod").disabled = true;
         fillSettings(); renderMethods(); renderDests(); toast("支払い方法を追加した");
       });
       /* ================= バックアップ（書き出し・読み込み） =================
